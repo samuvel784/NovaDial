@@ -21,6 +21,7 @@ import android.telephony.PhoneNumberUtils
 import android.telephony.SubscriptionManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import com.example.data.AppDatabase
 import com.example.model.AppSetting
 import com.example.model.CallRecording
@@ -603,6 +604,7 @@ object CallManager {
 
     fun rejectCallWithMessage(context: Context, number: String, textMessage: String) {
         val call = _currentCall.value
+        // An active ringing call: let the platform decline-with-message on our behalf
         if (call != null && call.state == Call.STATE_RINGING) {
             try {
                 call.reject(true, textMessage)
@@ -612,6 +614,26 @@ object CallManager {
         }
 
         call?.disconnect()
+
+        // No ringing call (declined from the dialer UI): send the message directly
+        // when SEND_SMS is granted and the feature is enabled, otherwise hand off
+        // to the SMS app.
+        val directSmsEnabled = context
+            .getSharedPreferences("dialer_prefs", Context.MODE_PRIVATE)
+            .getBoolean("quick_reply_direct_sms", true)
+        val hasSmsPermission = directSmsEnabled && ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.SEND_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (hasSmsPermission && number.isNotBlank()) {
+            try {
+                android.telephony.SmsManager.getDefault().sendTextMessage(
+                    number, null, textMessage, null, null
+                )
+                Toast.makeText(context, context.getString(R.string.sms_sent), Toast.LENGTH_SHORT).show()
+                return
+            } catch (_: Exception) {} // fall through to the SMS app
+        }
+
         try {
             val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number")).apply {
                 putExtra("sms_body", textMessage)

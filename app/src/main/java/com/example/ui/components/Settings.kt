@@ -100,6 +100,7 @@ fun SettingsPanel(
                             9 -> stringResource(R.string.cat_focus_protection)
                             10 -> stringResource(R.string.home_call_analytics)
                             11 -> stringResource(R.string.dup_finder_title)
+                            12 -> stringResource(R.string.contact_ringtones_title)
                             else -> stringResource(R.string.settings_title)
                         },
                         style = MaterialTheme.typography.titleLarge,
@@ -208,6 +209,10 @@ fun SettingsPanel(
                         cardBgColor = cardBgColor
                     )
                     11 -> DuplicateFinderSettings(
+                        viewModel = viewModel,
+                        cardBgColor = cardBgColor
+                    )
+                    12 -> ContactRingtonesSettings(
                         viewModel = viewModel,
                         cardBgColor = cardBgColor
                     )

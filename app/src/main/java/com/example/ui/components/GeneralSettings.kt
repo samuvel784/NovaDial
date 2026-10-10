@@ -200,7 +200,10 @@ fun GeneralSettings(
             SettingsSearchItem("Focus Mode", "Allow only saved contacts or VIPs, or silence all calls while focusing", "Focus & Protection", 9, Icons.Default.DoNotDisturbOn),
             SettingsSearchItem("Call Protection Level", "Strict and maximum modes silence unknown or unscreened callers", "Focus & Protection", 9, Icons.Default.Security),
             SettingsSearchItem("VIP Numbers", "Add numbers that always break through Focus mode and call protection", "Focus & Protection", 9, Icons.Default.Star),
-            SettingsSearchItem("Caller Announcer (Speak Caller Name)", "Read the caller's name aloud while the phone is ringing", "Focus & Protection", 9, Icons.Default.Campaign)
+            SettingsSearchItem("Caller Announcer (Speak Caller Name)", "Read the caller's name aloud while the phone is ringing", "Focus & Protection", 9, Icons.Default.Campaign),
+            SettingsSearchItem("Contact Ringtones & Vibration", "Assign per-contact ringtones and vibration patterns for Fake Call", "Focus & Protection", 12, Icons.Default.MusicNote),
+            SettingsSearchItem("Per-Contact Ringtone", "Choose a custom ringtone for a specific caller number", "Focus & Protection", 12, Icons.Default.MusicNote),
+            SettingsSearchItem("Vibration Patterns", "Set a bespoke vibration pattern (heartbeat, SOS, staccato) per contact", "Focus & Protection", 12, Icons.Default.Vibration)
         )
     }
 
@@ -519,6 +522,26 @@ fun GeneralSettings(
                         icon = Icons.Default.DoNotDisturbOn,
                         iconBgColor = MaterialTheme.colorScheme.tertiaryContainer,
                         iconTint = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+
+            // 10. Contact Ringtones
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardBgColor),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    SettingsRowNav(
+                        title = stringResource(R.string.contact_ringtones_title),
+                        subtitle = stringResource(R.string.contact_ringtones_sub),
+                        onClick = { onNavigateToTab(12, null) },
+                        icon = Icons.Default.MusicNote,
+                        iconBgColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconTint = MaterialTheme.colorScheme.secondary
                     )
                 }
             }

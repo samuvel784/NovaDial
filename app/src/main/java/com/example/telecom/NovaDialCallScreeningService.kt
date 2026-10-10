@@ -87,6 +87,17 @@ class NovaDialCallScreeningService : CallScreeningService() {
             }
         }
 
+        // 2.5 Do Not Disturb schedule: silence everyone except saved contacts and VIPs
+        val dndContext = applicationContext
+        if (DoNotDisturbPrefs.isQuietHoursNow(dndContext)) {
+            val (savedNow, _) = lookupContact(dndContext, number)
+            val vipNow = CallProtectionPrefs.isVip(dndContext, number)
+            if (!savedNow && !vipNow) {
+                Log.d(TAG, "DND quiet hours: silencing $number")
+                return@withContext silenced(number)
+            }
+        }
+
         // 3. Focus mode and protection level
         val context = applicationContext
         val (isSaved, isFavorite) = lookupContact(context, number)

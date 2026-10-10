@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
@@ -46,11 +47,14 @@ import com.example.R
 import com.example.telecom.AnnouncerScript
 import com.example.telecom.CallProtectionPrefs
 import com.example.telecom.CallerAnnouncerManager
+import com.example.telecom.DoNotDisturbPrefs
 import com.example.telecom.FocusMode
 import com.example.telecom.ProtectionLevel
+import com.example.ui.theme.AppShapes
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.CallScreenPermissionHelper
 import com.example.util.RichHapticEngine
+import java.util.Locale
 
 /**
  * Self-contained "Focus & Protection" settings screen.
@@ -59,6 +63,7 @@ import com.example.util.RichHapticEngine
  *  - Focus mode + call protection level (VIP / saved / repeat caller rules)
  *  - Caller announcer (text-to-speech that reads the caller's name while ringing)
  */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FocusAndProtectionSettings(
     viewModel: DialerViewModel,
@@ -84,6 +89,12 @@ fun FocusAndProtectionSettings(
 
     var showAddVipDialog by remember { mutableStateOf(false) }
     var vipInput by remember { mutableStateOf("") }
+
+    var dndEnabled by remember { mutableStateOf(DoNotDisturbPrefs.isEnabled(context)) }
+    var dndStartMin by remember { mutableIntStateOf(DoNotDisturbPrefs.getStartMin(context)) }
+    var dndEndMin by remember { mutableIntStateOf(DoNotDisturbPrefs.getEndMin(context)) }
+    var dndDays by remember { mutableIntStateOf(DoNotDisturbPrefs.getDays(context)) }
+    var pickerTarget by remember { mutableStateOf<Int?>(null) }
 
     var hasScreeningRole by remember { mutableStateOf(CallScreenPermissionHelper.hasCallScreeningRole(context)) }
     val screeningLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -204,6 +215,150 @@ fun FocusAndProtectionSettings(
             }
             Spacer(Modifier.height(6.dp))
         }
+
+        // ------------------------------------------------- DO NOT DISTURB SCHEDULE
+        PreferenceHeader(stringResource(R.string.dnd_title))
+        HighlightableCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            cardBgColor = cardBgColor,
+            isHighlighted = isMatchTitle("Do Not Disturb", highlightedTitle),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.NightsStay,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.dnd_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.dnd_sub),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.dnd_enabled_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.dnd_enabled_sub),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = dndEnabled,
+                        onCheckedChange = {
+                            dndEnabled = it
+                            DoNotDisturbPrefs.setAll(context, it, dndStartMin, dndEndMin, dndDays)
+                        }
+                    )
+                }
+                if (dndEnabled) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DndTimeChip(
+                            label = stringResource(R.string.dnd_start_label),
+                            value = formatTimeOfDay(dndStartMin),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                pickerTarget = 0
+                            }
+                        )
+                        DndTimeChip(
+                            label = stringResource(R.string.dnd_end_label),
+                            value = formatTimeOfDay(dndEndMin),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                pickerTarget = 1
+                            }
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.dnd_days_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val dayEntries = listOf(
+                            R.string.dnd_day_mon to DoNotDisturbPrefs.MON,
+                            R.string.dnd_day_tue to DoNotDisturbPrefs.TUE,
+                            R.string.dnd_day_wed to DoNotDisturbPrefs.WED,
+                            R.string.dnd_day_thu to DoNotDisturbPrefs.THU,
+                            R.string.dnd_day_fri to DoNotDisturbPrefs.FRI,
+                            R.string.dnd_day_sat to DoNotDisturbPrefs.SAT,
+                            R.string.dnd_day_sun to DoNotDisturbPrefs.SUN
+                        )
+                        dayEntries.forEach { (label, bit) ->
+                            val active = (dndDays and (1 shl bit)) != 0
+                            FilterChip(
+                                selected = active,
+                                onClick = {
+                                    dndDays = if (active) dndDays and (1 shl bit).inv() else dndDays or (1 shl bit)
+                                    DoNotDisturbPrefs.setAll(context, dndEnabled, dndStartMin, dndEndMin, dndDays)
+                                    RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                },
+                                label = { Text(stringResource(label)) }
+                            )
+                        }
+                    }
+                    if (DoNotDisturbPrefs.isQuietHoursNow(context)) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            shape = AppShapes.Chip,
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.NightsStay,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.dnd_active_now),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
 
         // -------------------------------------------------------- PROTECTION LEVEL
         PreferenceHeader(stringResource(R.string.header_call_protection))
@@ -544,6 +699,37 @@ fun FocusAndProtectionSettings(
                 }
             }
         )
+
+        if (pickerTarget != null) {
+            val current = if (pickerTarget == 0) dndStartMin else dndEndMin
+            val timeState = rememberTimePickerState(
+                initialHour = (current / 60) % 24,
+                initialMinute = current % 60,
+                is24Hour = true
+            )
+            AlertDialog(
+                onDismissRequest = { pickerTarget = null },
+                title = { Text(stringResource(R.string.dnd_pick_time_title)) },
+                text = { TimePicker(state = timeState) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val mins = timeState.hour * 60 + timeState.minute
+                        if (pickerTarget == 0) {
+                            dndStartMin = mins
+                        } else {
+                            dndEndMin = mins
+                        }
+                        DoNotDisturbPrefs.setAll(context, dndEnabled, dndStartMin, dndEndMin, dndDays)
+                        pickerTarget = null
+                    }) { Text(stringResource(R.string.btn_save)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pickerTarget = null }) {
+                        Text(stringResource(R.string.btn_cancel))
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -645,4 +831,40 @@ private fun protectionLevelSubtitle(level: ProtectionLevel): String = when (leve
     ProtectionLevel.STANDARD -> stringResource(R.string.protection_standard_sub)
     ProtectionLevel.STRICT -> stringResource(R.string.protection_strict_sub)
     ProtectionLevel.MAXIMUM -> stringResource(R.string.protection_maximum_sub)
+}
+
+private fun formatTimeOfDay(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    return String.format(Locale.US, "%02d:%02d", h, m)
+}
+
+@Composable
+private fun DndTimeChip(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
 }

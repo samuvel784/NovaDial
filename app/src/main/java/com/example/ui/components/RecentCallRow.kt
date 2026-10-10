@@ -112,6 +112,14 @@ fun RecentCallRow(
     }
     var showPlaybackDialog by remember { mutableStateOf(false) }
 
+    val spamEntities by viewModel.spamFlow.collectAsStateWithLifecycle()
+    val isSpam = remember(spamEntities, record.number) {
+        spamEntities.any { it.number == record.number }
+    }
+    val spamEntity = remember(spamEntities, record.number) {
+        spamEntities.firstOrNull { it.number == record.number }
+    }
+
     val rowCardContent = @Composable {
         Card(
             modifier = Modifier
@@ -212,6 +220,34 @@ fun RecentCallRow(
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (isSpam) {
+                                    Surface(
+                                        shape = AppShapes.Chip,
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
+                                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Report,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(10.dp)
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.spam_label),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.error
                                             )
                                         }
                                     }
@@ -380,6 +416,23 @@ fun RecentCallRow(
                                         viewModel.removeBlockedNumber(record.number)
                                     } else {
                                         viewModel.addBlockedNumber(record.number)
+                                    }
+                                }
+                            )
+
+                            DetailActionItem(
+                                icon = if (isSpam) Icons.Default.ReportOff else Icons.Default.Report,
+                                label = if (isSpam) stringResource(R.string.remove_spam) else stringResource(R.string.mark_spam),
+                                containerColor = if (isSpam) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                contentColor = if (isSpam) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.error,
+                                onClick = {
+                                    RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                    if (isSpam && spamEntity != null) {
+                                        viewModel.deleteSpamNumber(spamEntity)
+                                        Toast.makeText(context, context.getString(R.string.spam_unmarked), Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.addSpamNumber(record.number, context.getString(R.string.spam_label))
+                                        Toast.makeText(context, context.getString(R.string.spam_marked), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )

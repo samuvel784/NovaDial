@@ -22,7 +22,10 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -63,9 +66,12 @@ import com.example.model.CallRecording
 import com.example.model.CallType
 import com.example.ui.components.*
 import com.example.ui.viewmodel.DialerViewModel
+import com.example.util.ContactRingtonePrefs
 import com.example.util.RichHapticEngine
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+const val MAX_WIDGET_FAVORITES = 6
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -91,6 +97,14 @@ fun MainScreen(
     var isSettingsVisible by viewModel.isSettingsVisible
     var isCallActive by viewModel.isCallActive
     var isCallMinimized by viewModel.isCallMinimized
+
+    val favoriteContacts by viewModel.favoriteContacts.collectAsStateWithLifecycle()
+    val dialpadMatches by viewModel.dialpadMatches.collectAsStateWithLifecycle()
+
+    // Keep the home-screen favourites widget snapshot in sync with the app
+    LaunchedEffect(favoriteContacts) {
+        viewModel.updateWidgetFavorites(favoriteContacts.take(MAX_WIDGET_FAVORITES))
+    }
 
     LaunchedEffect(selectedTab) {
         focusManager.clearFocus()
@@ -377,7 +391,7 @@ fun MainScreen(
                 val isRowSwipeEnabled by viewModel.isRowSwipeEnabled
 
                 AnimatedVisibility(
-                    visible = currentSlotKey != "DIALPAD" && !isCallHistoryDetailsOpen,
+                    visible = !isCallHistoryDetailsOpen,
                     enter = expandVertically(
                         animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy)
                     ) + fadeIn(animationSpec = tween(120)),
@@ -418,7 +432,6 @@ fun MainScreen(
                     ) { page ->
                         when (tabSlots.getOrElse(page) { "HOME" }) {
                             "HOME" -> {
-                                val favoriteContacts by viewModel.favoriteContacts.collectAsStateWithLifecycle()
                                 val allCallHistory by viewModel.allCallHistoryFlow.collectAsStateWithLifecycle()
                                 HomeTabContent(
                                     viewModel = viewModel,
@@ -487,41 +500,6 @@ fun MainScreen(
                                     },
                                     onDeleteContact = { viewModel.deleteContact(it) },
                                     startWithFavoritesOnly = true
-                                )
-                            }
-                            "DIALPAD" -> {
-                                val dialpadTonesEnabled by viewModel.dialpadTonesEnabled
-                                val voicemailNumber by viewModel.voicemailNumber
-                                val speedDialEntities by viewModel.speedDialFlow.collectAsStateWithLifecycle()
-                                val speedDialMap = remember(speedDialEntities) { speedDialEntities.associate { it.key to it.number } }
-                                val dialpadMatches by viewModel.dialpadMatches.collectAsStateWithLifecycle()
-
-                                DialpadTabContent(
-                                    inputValue = dialpadInput,
-                                    onValueChange = {
-                                        if (it.length > dialpadInput.length) {
-                                            if (dialpadTonesEnabled) playDtmf(it.last().toString())
-                                        }
-                                        viewModel.onDialpadInputChange(it)
-                                    },
-                                    onCallClick = {
-                                        if (it.isNotEmpty()) {
-                                            initiateCall("Unknown", it)
-                                            viewModel.onDialpadInputChange("")
-                                        }
-                                    },
-                                    onCallWithSim = { num, sim ->
-                                        if (num.isNotEmpty()) {
-                                            initiateCall("Unknown", num, simChoice = sim)
-                                            viewModel.onDialpadInputChange("")
-                                        }
-                                    },
-                                    onSpeedDialCall = { initiateCall("Speed Dial", it) },
-                                    voicemailNumber = voicemailNumber,
-                                    speedDialMap = speedDialMap,
-                                    dialpadMatches = dialpadMatches,
-                                    onCollapseClick = {},
-                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -624,6 +602,28 @@ fun MainScreen(
             val fakeCallerName by viewModel.fakeCallerName
             val fakeCallerNumber by viewModel.fakeCallerNumber
             val fakeCallState by viewModel.fakeCallState
+
+            // Play the contact's assigned ringtone (if any) while Fake Call is ringing
+            val fakeCallRingtone = remember { mutableStateOf<Ringtone?>(null) }
+            LaunchedEffect(isFakeCallActive, fakeCallState, fakeCallerNumber) {
+                if (isFakeCallActive && fakeCallState == "RINGING") {
+                    val assignment = runCatching { ContactRingtonePrefs.get(context, fakeCallerNumber) }.getOrNull()
+                    if (assignment != null && assignment.ringtoneUri.isNotBlank()) {
+                        try {
+                            fakeCallRingtone.value?.stop()
+                            fakeCallRingtone.value = RingtoneManager.getRingtone(context, Uri.parse(assignment.ringtoneUri))?.apply { play() }
+                        } catch (_: Exception) {}
+                    }
+                } else {
+                    try { fakeCallRingtone.value?.stop() } catch (_: Exception) {}
+                    fakeCallRingtone.value = null
+                }
+            }
+            DisposableEffect(Unit) {
+                onDispose {
+                    try { fakeCallRingtone.value?.stop() } catch (_: Exception) {}
+                }
+            }
 
             AnimatedVisibility(
                 visible = isSettingsVisible && !isFakeCallActive && (!isCallActive || isCallMinimized),
@@ -867,6 +867,7 @@ fun MainScreen(
                     },
                     speedDialMap = speedDialMap,
                     voicemailNumber = voicemailNumber,
+                    dialpadMatches = dialpadMatches,
                     viewModel = viewModel
                 )
             }

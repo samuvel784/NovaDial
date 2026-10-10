@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.widget.FavoritesWidgetProvider
 import com.example.ui.MainScreen
 import com.example.ui.theme.AppShapes
 import com.example.ui.theme.MyApplicationTheme
@@ -389,6 +390,25 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
+
+        // Home-screen favourites widget: tap a row to call that contact
+        val widgetNumber = intent.getStringExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NUMBER)
+        if (!widgetNumber.isNullOrBlank()) {
+            intent.removeExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NUMBER)
+            intent.removeExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NAME)
+            isAppAuthenticated.value = true
+            setLockScreenVisibility(true)
+            val canCall = ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.CALL_PHONE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (canCall) {
+                CallManager.placeCall(this, widgetNumber, viewModel.preferredSim.value)
+            } else {
+                // No call permission yet: prefill the dialpad so the user can tap call
+                viewModel.dialpadInput.value = widgetNumber
+                viewModel.selectTabBySlotKey("DIALPAD")
+            }
+        }
 
         if (intent.getBooleanExtra("TRIGGER_FAKE_CALL", false)) {
             if (viewModel.isFakeCallSimulatorEnabled.value) {

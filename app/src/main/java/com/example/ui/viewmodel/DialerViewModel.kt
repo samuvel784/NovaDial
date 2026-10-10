@@ -31,6 +31,7 @@ import com.example.model.*
 import com.example.util.CallAudioRecorder
 import com.example.util.RecordingCompressionProfile
 import com.example.util.ReminderScheduler
+import com.example.widget.FavoritesWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -287,6 +288,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         com.example.ui.theme.ThemeMode.fromKey(prefs.getString("theme_mode", "default"))
     )
     var isAmoledMode = mutableStateOf(prefs.getBoolean("is_amoled_mode", false))
+    var isQuickReplyDirectSms = mutableStateOf(prefs.getBoolean("quick_reply_direct_sms", true))
     var customColorHex = mutableStateOf(prefs.getString("custom_color_hex", "#5A4BE0") ?: "#5A4BE0")
     var isM3Expressive = mutableStateOf(prefs.getBoolean("is_m3_expressive", true))
     var avatarShapeType = mutableStateOf(prefs.getString("avatar_shape_type", "squircle") ?: "squircle")
@@ -322,11 +324,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     // Dashboard & Tab Layout & Swipe Preferences
     var dashboardMode = mutableStateOf(prefs.getString("dashboard_mode", "FULL") ?: "FULL")
-    var isCallLogDashboardEnabled = mutableStateOf(prefs.getBoolean("is_call_log_dashboard_enabled", true))
     var isCallLogFiltersEnabled = mutableStateOf(prefs.getBoolean("is_call_log_filters_enabled", true))
-    var tabSlotLeft = mutableStateOf(prefs.getString("tab_slot_left", "RECENTS") ?: "RECENTS")
-    var tabSlotMiddle = mutableStateOf(prefs.getString("tab_slot_middle", "CONTACTS") ?: "CONTACTS")
-    var tabSlotRight = mutableStateOf(prefs.getString("tab_slot_right", "DIALPAD") ?: "DIALPAD")
     var isRowSwipeEnabled = mutableStateOf(prefs.getBoolean("is_row_swipe_enabled", true))
     var lastDialedNumber = mutableStateOf(prefs.getString("last_dialed_number", "") ?: "")
 
@@ -474,10 +472,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                 settings["clir_prefix"]?.let {
                     clirPrefix.value = it
                     editor.putString("clir_prefix", it)
-                }
-                settings["is_call_log_dashboard_enabled"]?.toBooleanStrictOrNull()?.let {
-                    isCallLogDashboardEnabled.value = it
-                    editor.putBoolean("is_call_log_dashboard_enabled", it)
                 }
                 settings["is_call_log_filters_enabled"]?.toBooleanStrictOrNull()?.let {
                     isCallLogFiltersEnabled.value = it
@@ -809,16 +803,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateCallLogDashboardEnabled(enabled: Boolean) {
-        isCallLogDashboardEnabled.value = enabled
-        prefs.edit().putBoolean("is_call_log_dashboard_enabled", enabled).apply()
-        viewModelScope.launch {
-            try {
-                repository.dao.insertSetting(AppSetting("is_call_log_dashboard_enabled", enabled.toString()))
-            } catch (_: Exception) {}
-        }
-    }
-
     fun updateCallLogFiltersEnabled(enabled: Boolean) {
         isCallLogFiltersEnabled.value = enabled
         prefs.edit().putBoolean("is_call_log_filters_enabled", enabled).apply()
@@ -827,90 +811,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                 repository.dao.insertSetting(AppSetting("is_call_log_filters_enabled", enabled.toString()))
             } catch (_: Exception) {}
         }
-    }
-
-    fun updateTabSlotLeft(screen: String) {
-        val currentLeft = tabSlotLeft.value
-        val currentMiddle = tabSlotMiddle.value
-        val currentRight = tabSlotRight.value
-
-        var newMiddle = currentMiddle
-        var newRight = currentRight
-
-        if (screen == currentMiddle) {
-            newMiddle = currentLeft
-        } else if (screen == currentRight) {
-            newRight = currentLeft
-        }
-
-        tabSlotLeft.value = screen
-        tabSlotMiddle.value = newMiddle
-        tabSlotRight.value = newRight
-
-        prefs.edit()
-            .putString("tab_slot_left", screen)
-            .putString("tab_slot_middle", newMiddle)
-            .putString("tab_slot_right", newRight)
-            .apply()
-
-        val slots = listOf(screen, newMiddle, newRight)
-        selectedTab.intValue = slots.indexOf(defaultStartupTabKey.value).coerceAtLeast(0)
-    }
-
-    fun updateTabSlotMiddle(screen: String) {
-        val currentLeft = tabSlotLeft.value
-        val currentMiddle = tabSlotMiddle.value
-        val currentRight = tabSlotRight.value
-
-        var newLeft = currentLeft
-        var newRight = currentRight
-
-        if (screen == currentLeft) {
-            newLeft = currentMiddle
-        } else if (screen == currentRight) {
-            newRight = currentMiddle
-        }
-
-        tabSlotMiddle.value = screen
-        tabSlotLeft.value = newLeft
-        tabSlotRight.value = newRight
-
-        prefs.edit()
-            .putString("tab_slot_left", newLeft)
-            .putString("tab_slot_middle", screen)
-            .putString("tab_slot_right", newRight)
-            .apply()
-
-        val slots = listOf(newLeft, screen, newRight)
-        selectedTab.intValue = slots.indexOf(defaultStartupTabKey.value).coerceAtLeast(0)
-    }
-
-    fun updateTabSlotRight(screen: String) {
-        val currentLeft = tabSlotLeft.value
-        val currentMiddle = tabSlotMiddle.value
-        val currentRight = tabSlotRight.value
-
-        var newLeft = currentLeft
-        var newMiddle = currentMiddle
-
-        if (screen == currentLeft) {
-            newLeft = currentRight
-        } else if (screen == currentMiddle) {
-            newMiddle = currentRight
-        }
-
-        tabSlotRight.value = screen
-        tabSlotLeft.value = newLeft
-        tabSlotMiddle.value = newMiddle
-
-        prefs.edit()
-            .putString("tab_slot_left", newLeft)
-            .putString("tab_slot_middle", newMiddle)
-            .putString("tab_slot_right", screen)
-            .apply()
-
-        val slots = listOf(newLeft, newMiddle, screen)
-        selectedTab.intValue = slots.indexOf(defaultStartupTabKey.value).coerceAtLeast(0)
     }
 
     fun updateRowSwipeEnabled(enabled: Boolean) {
@@ -950,6 +850,50 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val success = com.example.data.BackupRestoreManager.writeTextToUri(getApplication(), uri, content)
             onResult(success)
+        }
+    }
+
+    fun writeBytesToUri(uri: Uri, bytes: ByteArray, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = try {
+                val os = getApplication<Application>().contentResolver.openOutputStream(uri)
+                if (os != null) {
+                    os.use { it.write(bytes) }
+                    true
+                } else {
+                    false
+                }
+            } catch (_: Exception) {
+                false
+            }
+            onResult(success)
+        }
+    }
+
+    fun exportCallLogCsv(onResult: (String) -> Unit) {
+        onResult(com.example.util.CallLogExport.buildCallLogCsv(allCallHistoryFlow.value))
+    }
+
+    fun buildCallLogPdf(title: String, exportedAt: String): ByteArray =
+        com.example.util.CallLogExport.buildCallLogPdf(allCallHistoryFlow.value, title, exportedAt)
+
+    /**
+     * Persists a compact JSON snapshot of the favourite contacts for the
+     * home-screen widget and asks the provider to re-render. Kept intentionally
+     * small (name + number only) so launcher rendering never touches the DB.
+     */
+    fun updateWidgetFavorites(contacts: List<Contact>) {
+        try {
+            val arr = org.json.JSONArray()
+            contacts.take(6).forEach { c ->
+                if (c.number.isNotBlank()) {
+                    arr.put(org.json.JSONObject().put("n", c.name).put("v", c.number))
+                }
+            }
+            prefs.edit().putString(FavoritesWidgetProvider.KEY_SNAPSHOT, arr.toString()).apply()
+            FavoritesWidgetProvider.refreshAll(getApplication())
+        } catch (_: Exception) {
+            // Widget refresh must never crash the app
         }
     }
 
@@ -1019,6 +963,16 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deleteQuickResponse(resp: QuickResponse) {
         viewModelScope.launch { repository.deleteQuickResponse(resp) }
+    }
+
+    fun updateQuickReplyDirectSms(enabled: Boolean) {
+        isQuickReplyDirectSms.value = enabled
+        prefs.edit().putBoolean("quick_reply_direct_sms", enabled).apply()
+        viewModelScope.launch {
+            try {
+                repository.dao.insertSetting(AppSetting("quick_reply_direct_sms", enabled.toString()))
+            } catch (_: Exception) {}
+        }
     }
 
     // Helper Dialog State
