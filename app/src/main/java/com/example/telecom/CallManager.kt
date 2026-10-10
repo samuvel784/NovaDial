@@ -80,7 +80,7 @@ class CallManager private constructor(context: Context) {
         }
 
         fun onTelecomCallAdded(call: Call, service: NovaDialInCallService) {
-            activeInstance?.handleCallAdded(call, service)
+            getInstance(service).handleCallAdded(call, service)
         }
 
         fun onTelecomCallRemoved(call: Call) {
@@ -201,72 +201,62 @@ class CallManager private constructor(context: Context) {
         isSpam: Boolean = false,
         onCallEnded: ((number: String, name: String?, duration: Long) -> Unit)? = null
     ) {
-        val displayName = name?.ifBlank { null } ?: PhoneNumberUtils.formatForDisplay(number)
-        val initialSignal = readSignal()
+        val uri = Uri.fromParts("tel", number, null)
         val isDefault = DefaultDialerManager.isDefaultDialer(context)
 
         if (!isDefault) {
-            Log.w(TAG, "NovaDial is not set as the default dialer. System phone app may take over call UI.")
+            Log.w(TAG, "NovaDial is not set as default dialer. Requesting default dialer role and using system dialer fallback.")
             DefaultDialerManager.requestDefaultDialer(context)
-        }
-
-        _activeSession.value = ActiveCallSession(
-            number = number,
-            displayName = displayName,
-            state = CallSessionState.DIALING,
-            simSlot = simSlot,
-            isSpam = isSpam,
-            isIncoming = false,
-            signalLevel = initialSignal.level,
-            signalDbm = initialSignal.dbm,
-            networkType = initialSignal.networkType
-        )
-
-        val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-        val uri = Uri.fromParts("tel", number, null)
-        val extras = Bundle().apply {
-            val phoneAccountHandle = getPhoneAccountHandleForSlot(simSlot)
-            if (phoneAccountHandle != null) {
-                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle)
-            }
-        }
-
-        try {
-            val hasCallPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CALL_PHONE
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (hasCallPermission && telecomManager != null) {
-                Log.d(TAG, "Placing official cellular call via TelecomManager: $number")
-                telecomManager.placeCall(uri, extras)
-            } else {
+            try {
                 val intent = Intent(Intent.ACTION_DIAL, uri).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not launch ACTION_DIAL fallback", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error placing call via TelecomManager", e)
+            return
+        }
+
+        val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+        val hasCallPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CALL_PHONE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasCallPermission && telecomManager != null) {
+            val extras = Bundle().apply {
+                val phoneAccountHandle = getPhoneAccountHandleForSlot(simSlot)
+                if (phoneAccountHandle != null) {
+                    putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle)
+                }
+            }
             try {
-                val intent = Intent(Intent.ACTION_CALL, uri).apply {
+                Log.d(TAG, "Placing official cellular call via TelecomManager: $number")
+                // Do NOT set a fake local _activeSession state here.
+                // TelecomManager.placeCall will bind to NovaDialInCallService,
+                // which receives onCallAdded and updates _activeSession with the authoritative call state.
+                telecomManager.placeCall(uri, extras)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error placing call via TelecomManager", e)
+                try {
+                    val intent = Intent(Intent.ACTION_DIAL, uri).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (ex: Exception) {
+                    Log.e(TAG, "Could not place call via ACTION_DIAL", ex)
+                }
+            }
+        } else {
+            Log.w(TAG, "Missing CALL_PHONE permission or TelecomManager unavailable. Using ACTION_DIAL.")
+            try {
+                val intent = Intent(Intent.ACTION_DIAL, uri).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
-            } catch (ex: Exception) {
-                Log.e(TAG, "Could not place the call", ex)
-            }
-        }
-
-        startDurationTimer()
-
-        // If Android never reports a call (no permission, no SIM, call refused), do not leave a dead call screen open.
-        scope.launch {
-            delay(12_000)
-            val s = _activeSession.value
-            if (activeTelecomCall == null && s.state == CallSessionState.DIALING && s.number == number) {
-                Log.w(TAG, "No call appeared after placeCall; closing the call screen")
-                _activeSession.value = ActiveCallSession(state = CallSessionState.IDLE)
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not place call via ACTION_DIAL", e)
             }
         }
     }
@@ -276,22 +266,33 @@ class CallManager private constructor(context: Context) {
             return null
         }
         val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager ?: return null
-        val subscriptionManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
         return try {
             val handles = telecomManager.callCapablePhoneAccounts
+            if (handles.isNullOrEmpty()) return null
+
+            val subscriptionManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
             if (subscriptionManager != null) {
                 val subInfoList = subscriptionManager.activeSubscriptionInfoList
                 if (!subInfoList.isNullOrEmpty()) {
                     val matchingSub = subInfoList.find { it.simSlotIndex + 1 == slotIndex }
                     if (matchingSub != null) {
                         val subIdStr = matchingSub.subscriptionId.toString()
-                        val matchedHandle = handles.find { it.id == subIdStr } ?: handles.find { it.id.contains(subIdStr) }
+                        val matchedHandle = handles.find { handle ->
+                            handle.id == subIdStr || handle.id.contains(subIdStr) || handle.id == matchingSub.iccId
+                        }
                         if (matchedHandle != null) return matchedHandle
                     }
                 }
             }
-            handles.getOrNull(slotIndex - 1) ?: handles.firstOrNull()
+
+            // Only supply explicit handle if multiple SIM accounts exist
+            if (handles.size > 1) {
+                handles.getOrNull(slotIndex - 1)
+            } else {
+                null
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "Error resolving PhoneAccountHandle for slot $slotIndex", e)
             null
         }
     }

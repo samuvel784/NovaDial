@@ -63,7 +63,7 @@ class NovaDialRepository(private val context: Context) {
     }
 
     fun getContactsSyncConsent(): Boolean {
-        return privacyPrefs.getBoolean("sync_contacts_consent", true)
+        return privacyPrefs.getBoolean("sync_contacts_consent", false)
     }
 
     fun setCallLogsSyncConsent(consent: Boolean) {
@@ -75,7 +75,7 @@ class NovaDialRepository(private val context: Context) {
     }
 
     fun getCallLogsSyncConsent(): Boolean {
-        return privacyPrefs.getBoolean("sync_call_logs_consent", true)
+        return privacyPrefs.getBoolean("sync_call_logs_consent", false)
     }
 
     private fun unregisterCallLogObserver() {
@@ -362,13 +362,15 @@ class NovaDialRepository(private val context: Context) {
     }
 
     fun verifyPin(pin: String): Boolean {
-        _isAppLocked.value = false
-        return true
+        // Device credential authentication (KeyguardManager / BiometricPrompt) is used.
+        // Direct PIN string matching without device system verification is disallowed.
+        return false
     }
 
     fun verifyPattern(pattern: List<Int>): Boolean {
-        _isAppLocked.value = false
-        return true
+        // Device credential authentication (KeyguardManager / BiometricPrompt) is used.
+        // Direct pattern matching without device system verification is disallowed.
+        return false
     }
 
     fun unlockApp() {
@@ -415,9 +417,19 @@ class NovaDialRepository(private val context: Context) {
         if (deviceContacts.isNotEmpty()) {
             val suppressedMappings = db.contactDao().getAllMergedMappings()
             val suppressedIds = suppressedMappings.map { it.suppressedId }.toSet()
+            val primaryIdsWithMappings = suppressedMappings.map { it.primaryId }.toSet()
+
             val filteredContacts = deviceContacts.filter { !suppressedIds.contains(it.id) }
-            if (filteredContacts.isNotEmpty()) {
-                db.contactDao().insertContactsIgnore(filteredContacts)
+            for (contact in filteredContacts) {
+                if (primaryIdsWithMappings.contains(contact.id)) {
+                    val existingPrimary = db.contactDao().getContactById(contact.id)
+                    if (existingPrimary != null) {
+                        val merged = DuplicateDetector.mergeContacts(listOf(existingPrimary, contact))
+                        db.contactDao().insertContact(merged)
+                        continue
+                    }
+                }
+                db.contactDao().insertContact(contact)
             }
         }
 

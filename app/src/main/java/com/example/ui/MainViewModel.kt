@@ -333,30 +333,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 simSlot = effectiveSimSlot,
                 isSpam = isSpam
             )
-            repository.recordCallLog(
-                number = number,
-                name = resolvedName,
-                type = CallType.OUTGOING,
-                durationSeconds = 0L,
-                simSlot = effectiveSimSlot
-            )
         }
     }
 
     fun endActiveCall() {
         viewModelScope.launch {
-            val (session, duration) = repository.callManager.endCall()
-            if (session.number.isNotBlank()) {
-                repository.recordCallLog(
-                    number = session.number,
-                    name = session.displayName,
-                    type = CallType.OUTGOING,
-                    durationSeconds = duration,
-                    simSlot = session.simSlot
-                )
-                if (repository.communitySpamManager.settings.value.showCallerIdOverlay) {
-                    postCallSheetSession.value = session
-                }
+            val (session, _) = repository.callManager.endCall()
+            if (session.number.isNotBlank() && repository.communitySpamManager.settings.value.showCallerIdOverlay) {
+                postCallSheetSession.value = session
             }
         }
     }
@@ -582,5 +566,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun triggerEmergencySos(reason: String = "Manual User Trigger") {
         repository.triggerEmergencySos(reason)
+    }
+
+    // Privacy & Data Sharing Consent
+    fun getContactsSyncConsent(): Boolean = repository.getContactsSyncConsent()
+    fun setContactsSyncConsent(consent: Boolean) {
+        repository.setContactsSyncConsent(consent)
+        showStatus(if (consent) "Contacts sync consent enabled" else "Contacts sync consent disabled")
+    }
+
+    fun getCallLogsSyncConsent(): Boolean = repository.getCallLogsSyncConsent()
+    fun setCallLogsSyncConsent(consent: Boolean) {
+        repository.setCallLogsSyncConsent(consent)
+        showStatus(if (consent) "Call log sync consent enabled" else "Call log sync consent disabled")
     }
 }

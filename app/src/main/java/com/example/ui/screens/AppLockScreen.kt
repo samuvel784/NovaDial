@@ -62,11 +62,10 @@ fun AppLockScreen(
             if (intent != null) {
                 deviceCredentialLauncher.launch(intent)
             } else {
-                viewModel.unlockApp()
+                authError = "System device credential prompt is unavailable."
             }
         } else {
-            // If phone doesn't have a screen lock configured, unlock directly
-            viewModel.unlockApp()
+            authError = "No device screen lock set up in Android Settings. Please configure a PIN, Pattern, or Biometrics in system settings."
         }
     }
 

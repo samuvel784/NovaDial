@@ -1,8 +1,11 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.telecom.DefaultDialerManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -60,6 +63,22 @@ fun SettingsScreen(
 
     val keyguardManager = remember { context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager }
     val isPhoneSecure = remember { keyguardManager?.isDeviceSecure == true }
+
+    var pendingLockEnableState by remember { mutableStateOf<Boolean?>(null) }
+    val settingsAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val pendingState = pendingLockEnableState
+        pendingLockEnableState = null
+        if (result.resultCode == Activity.RESULT_OK && pendingState != null) {
+            viewModel.setAppLock(pendingState, lockType = "PHONE_LOCK")
+        } else {
+            viewModel.showStatus(
+                if (pendingState == true) "App Lock activation cancelled or failed"
+                else "Authentication required to disable App Lock"
+            )
+        }
+    }
 
     var showBlockedListDialog by remember { mutableStateOf(false) }
     var showAddBlockNumberDialog by remember { mutableStateOf(false) }
@@ -311,7 +330,33 @@ fun SettingsScreen(
                                 Switch(
                                     checked = isLockEnabled,
                                     onCheckedChange = { checked ->
-                                        viewModel.setAppLock(checked, lockType = "PHONE_LOCK")
+                                        if (checked) {
+                                            if (!isPhoneSecure) {
+                                                viewModel.showStatus("Cannot enable App Lock: Set up a screen lock in Android Settings first.")
+                                            } else {
+                                                pendingLockEnableState = true
+                                                val intent = keyguardManager?.createConfirmDeviceCredentialIntent(
+                                                    "Enable App Lock",
+                                                    "Confirm device screen lock to activate App Lock"
+                                                )
+                                                if (intent != null) {
+                                                    settingsAuthLauncher.launch(intent)
+                                                } else {
+                                                    viewModel.showStatus("Device credential intent unavailable")
+                                                }
+                                            }
+                                        } else {
+                                            pendingLockEnableState = false
+                                            val intent = keyguardManager?.createConfirmDeviceCredentialIntent(
+                                                "Disable App Lock",
+                                                "Confirm device screen lock to deactivate App Lock"
+                                            )
+                                            if (intent != null) {
+                                                settingsAuthLauncher.launch(intent)
+                                            } else {
+                                                viewModel.showStatus("Device credential intent unavailable")
+                                            }
+                                        }
                                     },
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = AppTheme.colors.primary,
@@ -814,6 +859,59 @@ fun SettingsScreen(
                                 TextButton(onClick = { viewModel.clearCallHistory() }) {
                                     Text("Clear", color = AppTheme.colors.error)
                                 }
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Section: Privacy & Data Sharing
+            item {
+                SettingsSectionHeader("Privacy & Data Sharing")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = AppTheme.colors.card),
+                    shape = RoundedCornerShape(16.dp),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(AppTheme.colors.border))
+                ) {
+                    Column {
+                        var contactsConsent by remember { mutableStateOf(viewModel.getContactsSyncConsent()) }
+                        SettingsRow(
+                            icon = Icons.Default.Security,
+                            title = "Contacts Sync Consent",
+                            subtitle = "Allow reading device contacts on explicit choice",
+                            action = {
+                                Switch(
+                                    checked = contactsConsent,
+                                    onCheckedChange = { checked ->
+                                        contactsConsent = checked
+                                        viewModel.setContactsSyncConsent(checked)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = AppTheme.colors.primary,
+                                        checkedTrackColor = AppTheme.colors.elevated
+                                    )
+                                )
+                            }
+                        )
+                        HorizontalDivider(color = AppTheme.colors.border)
+                        var callLogsConsent by remember { mutableStateOf(viewModel.getCallLogsSyncConsent()) }
+                        SettingsRow(
+                            icon = Icons.Default.History,
+                            title = "Call Logs Sync Consent",
+                            subtitle = "Allow reading device call logs on explicit choice",
+                            action = {
+                                Switch(
+                                    checked = callLogsConsent,
+                                    onCheckedChange = { checked ->
+                                        callLogsConsent = checked
+                                        viewModel.setCallLogsSyncConsent(checked)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = AppTheme.colors.primary,
+                                        checkedTrackColor = AppTheme.colors.elevated
+                                    )
+                                )
                             }
                         )
                     }

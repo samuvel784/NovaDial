@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleCallIntent(intent)
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsState()
@@ -54,7 +55,28 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleCallIntent(intent)
         viewModel.checkDefaultDialer(this)
+    }
+
+    private fun handleCallIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action ?: return
+        val data = intent.data
+        val scheme = data?.scheme
+        val schemeSpecific = data?.schemeSpecificPart ?: ""
+
+        if (scheme == "tel" && schemeSpecific.isNotBlank()) {
+            when (action) {
+                Intent.ACTION_CALL, "android.intent.action.CALL_PRIVILEGED" -> {
+                    viewModel.initiateCall(schemeSpecific)
+                }
+                Intent.ACTION_DIAL, Intent.ACTION_VIEW -> {
+                    viewModel.setDialerNumber(schemeSpecific)
+                    viewModel.navigateTo(Screen.Dialer)
+                }
+            }
+        }
     }
 
     override fun onStop() {

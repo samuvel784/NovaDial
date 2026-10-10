@@ -76,13 +76,6 @@ object DuplicateDetector {
             }
         }
 
-        // 3. Name exact match
-        val n1 = c1.displayName.trim().lowercase()
-        val n2 = c2.displayName.trim().lowercase()
-        if (n1.isNotBlank() && n1 == n2) {
-            return "Identical Name: ${c1.displayName}"
-        }
-
         return null
     }
 

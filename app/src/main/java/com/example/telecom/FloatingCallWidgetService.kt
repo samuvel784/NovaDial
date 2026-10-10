@@ -269,7 +269,8 @@ class FloatingCallWidgetService : Service() {
                 gravity = Gravity.CENTER
                 setPadding(0, 16, 0, 0)
                 setOnClickListener {
-                    collapseWidget()
+                    // Hide widget without ending the call
+                    stop(context)
                 }
             }
             addView(hideBtn)
@@ -310,7 +311,13 @@ class FloatingCallWidgetService : Service() {
         val wm = windowManager ?: return
         val p = collapsedParams ?: return
         val metrics = DisplayMetrics()
-        wm.defaultDisplay.getMetrics(metrics)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            metrics.widthPixels = bounds.width()
+        } else {
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getMetrics(metrics)
+        }
 
         val screenWidth = metrics.widthPixels
         val viewWidth = collapsedView?.width ?: 200

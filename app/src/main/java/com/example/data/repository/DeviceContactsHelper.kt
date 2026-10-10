@@ -472,71 +472,67 @@ object DeviceContactsHelper {
         if (!hasWriteContactsPermission(context)) return false
         return try {
             val primaryRawId = primary.id.removePrefix("dev_")
-            // 1. Delete secondary device contacts from ContactsProvider
+            val rawContactId = getRawContactIdForContactId(context, primaryRawId) ?: primaryRawId
+
+            val ops = ArrayList<android.content.ContentProviderOperation>()
+
+            // 1. Link secondary device contacts to primary using AggregationExceptions
             for (c in cluster) {
                 if (c.id != primary.id && c.id.startsWith("dev_")) {
-                    val secRawId = c.id.removePrefix("dev_")
-                    context.contentResolver.delete(
-                        ContactsContract.Contacts.CONTENT_URI,
-                        "${ContactsContract.Contacts._ID} = ?",
-                        arrayOf(secRawId)
+                    val secContactId = c.id.removePrefix("dev_")
+                    val secRawId = getRawContactIdForContactId(context, secContactId) ?: secContactId
+                    try {
+                        ops.add(
+                            android.content.ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                                .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, rawContactId.toLongOrNull() ?: 0L)
+                                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, secRawId.toLongOrNull() ?: 0L)
+                                .build()
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            // 2. Safely append missing phone numbers and email addresses to primary raw contact without deleting existing fields
+            val existingPhones = readPhonesForContact(context.contentResolver, primaryRawId).map { PhoneNumberUtils.normalize(it.number) }
+            for (phone in primary.getPhoneNumbers()) {
+                val norm = PhoneNumberUtils.normalize(phone.number)
+                if (norm.isNotBlank() && existingPhones.none { PhoneNumberUtils.numbersMatch(it, norm) }) {
+                    val type = when (phone.type.lowercase()) {
+                        "work" -> ContactsContract.CommonDataKinds.Phone.TYPE_WORK
+                        "home" -> ContactsContract.CommonDataKinds.Phone.TYPE_HOME
+                        else -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
+                    }
+                    ops.add(
+                        android.content.ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone.number)
+                            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, type)
+                            .build()
                     )
                 }
             }
 
-            // 2. If primary is a device contact, update its phone numbers and emails in Contacts Provider
-            if (primary.id.startsWith("dev_")) {
-                val rawContactId = getRawContactIdForContactId(context, primaryRawId)
-                if (rawContactId != null) {
-                    val ops = ArrayList<android.content.ContentProviderOperation>()
-
-                    // Delete old data rows for raw contact
-                    ops.add(
-                        android.content.ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
-                            .withSelection("${ContactsContract.Data.RAW_CONTACT_ID} = ?", arrayOf(rawContactId))
-                            .build()
-                    )
-
-                    // Re-insert structured name
+            val existingEmails = readEmailsForContact(context.contentResolver, primaryRawId).map { it.email.trim().lowercase() }
+            for (email in primary.getEmails()) {
+                val lower = email.email.trim().lowercase()
+                if (lower.isNotBlank() && !existingEmails.contains(lower)) {
                     ops.add(
                         android.content.ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                             .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
-                            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, primary.displayName)
+                            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.CommonDataKinds.Email.DATA, email.email)
+                            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
                             .build()
                     )
-
-                    // Re-insert merged phone numbers
-                    for (phone in primary.getPhoneNumbers()) {
-                        val type = when (phone.type.lowercase()) {
-                            "work" -> ContactsContract.CommonDataKinds.Phone.TYPE_WORK
-                            "home" -> ContactsContract.CommonDataKinds.Phone.TYPE_HOME
-                            else -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
-                        }
-                        ops.add(
-                            android.content.ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
-                                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone.number)
-                                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, type)
-                                .build()
-                        )
-                    }
-
-                    // Re-insert merged emails
-                    for (email in primary.getEmails()) {
-                        ops.add(
-                            android.content.ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
-                                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                                .withValue(ContactsContract.CommonDataKinds.Email.DATA, email.email)
-                                .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
-                                .build()
-                        )
-                    }
-
-                    context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
                 }
+            }
+
+            if (ops.isNotEmpty()) {
+                context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
             }
             true
         } catch (e: Exception) {
