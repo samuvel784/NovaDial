@@ -1,0 +1,178 @@
+package com.example.telecom
+
+import android.content.Context
+import android.os.Build
+import android.provider.CallLog
+import android.provider.ContactsContract
+import android.telecom.Call
+import android.telecom.CallScreeningService
+import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
+import com.example.data.model.BlockAction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+
+/**
+ * Screens every incoming call BEFORE it rings:
+ *  1. Emergency numbers are never touched.
+ *  2. Numbers the user blocked, and spam rules the user set to "Auto-Block", are rejected.
+ *  3. Spam rules set to "Silence" ring silently.
+ *  4. Focus mode, protection level, VIP / favorites / repeat callers decide whether the call is silenced.
+ * A silenced call still appears in the call log as a missed call.
+ */
+@RequiresApi(Build.VERSION_CODES.N)
+class NovaDialCallScreeningService : CallScreeningService() {
+
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private lateinit var detector: RealtimeSpamDetector
+
+    override fun onCreate() {
+        super.onCreate()
+        detector = RealtimeSpamDetector(applicationContext)
+    }
+
+    override fun onScreenCall(callDetails: Call.Details) {
+        val isIncoming = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            callDetails.callDirection == Call.Details.DIRECTION_INCOMING
+        if (!isIncoming) {
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
+
+        val number = callDetails.handle?.schemeSpecificPart.orEmpty()
+
+        scope.launch {
+            val response = try {
+                // Android allows only a few seconds; if we are too slow the call simply rings normally.
+                withTimeoutOrNull(3500L) { decide(number) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error screening call", e)
+                null
+            } ?: CallResponse.Builder().build()
+
+            respondToCall(callDetails, response)
+        }
+    }
+
+    private suspend fun decide(number: String): CallResponse = withContext(Dispatchers.IO) {
+        val allow = CallResponse.Builder().build()
+
+        // 1. Emergency numbers: never blocked, never silenced
+        if (number.isNotBlank() && isEmergency(number)) return@withContext allow
+
+        // 2. Your blocklist and spam rules
+        if (number.isNotBlank()) {
+            val verdict = detector.screenIncomingCallerId(number)
+            if (verdict.isBlocked || (verdict.isSpam && verdict.action == BlockAction.AUTO_BLOCK)) {
+                Log.d(TAG, "Rejecting blocked call from $number: ${verdict.reason}")
+                return@withContext CallResponse.Builder()
+                    .setDisallowCall(true)
+                    .setRejectCall(true)
+                    .setSkipNotification(true)
+                    .build()
+            }
+            if (verdict.isSpam && verdict.action == BlockAction.SILENCE_RINGTONE) {
+                return@withContext silenced(number)
+            }
+        }
+
+        // 3. Focus mode and protection level
+        val context = applicationContext
+        val (isSaved, isFavorite) = lookupContact(context, number)
+        val repeatAllowed = CallProtectionPrefs.isRepeatCallerAllowed(context)
+
+        val result = CallProtectionPolicy.evaluateCall(
+            phoneNumber = number,
+            callerName = null,
+            isSavedContact = isSaved,
+            isVip = CallProtectionPrefs.isVip(context, number),
+            isFavorite = isFavorite,
+            isRepeatCaller = repeatAllowed && isRepeatCaller(context, number),
+            focusMode = CallProtectionPrefs.getFocusMode(context),
+            protectionLevel = CallProtectionPrefs.getProtectionLevel(context),
+            isEmergencyNumber = false
+        )
+        Log.d(TAG, "Policy for $number: silence=${result.shouldSilence} (${result.reason})")
+
+        if (result.shouldSilence) silenced(number) else allow
+    }
+
+    private fun silenced(number: String): CallResponse {
+        CallDecisionStore.markSilenced(number)
+        val builder = CallResponse.Builder()
+        // setSilenceCall exists from Android 10; on older versions the call simply rings
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setSilenceCall(true)
+        return builder.build()
+    }
+
+    private fun isEmergency(number: String): Boolean {
+        return try {
+            @Suppress("DEPRECATION")
+            android.telephony.PhoneNumberUtils.isEmergencyNumber(number)
+        } catch (e: Exception) {
+            false
+        } || com.example.util.PhoneNumberUtils.isEmergencyNumber(number)
+    }
+
+    /** Returns (isSavedContact, isFavorite) from the phone's real address book. */
+    private fun lookupContact(context: Context, number: String): Pair<Boolean, Boolean> {
+        if (number.isBlank()) return Pair(false, false)
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return Pair(false, false)
+
+        return try {
+            val uri = android.net.Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                android.net.Uri.encode(number)
+            )
+            context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.STARRED), null, null, null)?.use { c ->
+                if (c.moveToFirst()) Pair(true, c.getInt(0) == 1) else Pair(false, false)
+            } ?: Pair(false, false)
+        } catch (e: Exception) {
+            Pair(false, false)
+        }
+    }
+
+    /** True if the same number called in the last 3 minutes (the current call is not in the log yet). */
+    private fun isRepeatCaller(context: Context, number: String): Boolean {
+        if (number.isBlank()) return false
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALL_LOG) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return false
+
+        return try {
+            val since = System.currentTimeMillis() - 3 * 60 * 1000L
+            context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls.NUMBER),
+                "${CallLog.Calls.DATE} > ? AND ${CallLog.Calls.TYPE} IN (?, ?, ?)",
+                arrayOf(
+                    since.toString(),
+                    CallLog.Calls.INCOMING_TYPE.toString(),
+                    CallLog.Calls.MISSED_TYPE.toString(),
+                    CallLog.Calls.REJECTED_TYPE.toString()
+                ),
+                null
+            )?.use { c ->
+                var found = false
+                while (!found && c.moveToNext()) {
+                    val logged = c.getString(0).orEmpty()
+                    found = logged.isNotBlank() &&
+                        android.telephony.PhoneNumberUtils.compare(context, logged, number)
+                }
+                found
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private companion object {
+        const val TAG = "NovaDialCallScreening"
+    }
+}
