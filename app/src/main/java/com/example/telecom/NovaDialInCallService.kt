@@ -313,15 +313,9 @@ class NovaDialInCallService : InCallService() {
      */
     private fun bringAppToForeground() {
         try {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                putExtra("EXTRA_IN_CALL_MODE", true)
-            }
-            startActivity(intent)
+            com.example.ui.screens.CallActivity.start(this)
         } catch (e: Exception) {
-            Log.e(TAG, "Error bringing NovaDial to foreground", e)
+            Log.e(TAG, "Error bringing NovaDial to foreground via CallActivity", e)
         }
     }
 }
