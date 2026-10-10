@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">NovaDial</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_recents">Recent</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="call_end">End Call</string>
+    <string name="call_answer">Answer</string>
+    <string name="call_decline">Decline</string>
+    <string name="call_mute">Mute</string>
+    <string name="call_speaker">Speaker</string>
+    <string name="call_hold">Hold</string>
+    <string name="call_keypad">Keypad</string>
+    <string name="settings_title">Settings</string>
+    <string name="emergency_sos">Emergency SOS</string>
+    <string name="spam_shield">Spam Shield</string>
+    <string name="announcer_template_friendly">Incoming call from {name}</string>
 </resources>

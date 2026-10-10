@@ -2,6 +2,8 @@ package com.example
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -50,6 +52,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkDefaultDialer(this)
+        viewModel.checkDeviceSecurityAndAutoDisableLock(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -69,7 +72,14 @@ class MainActivity : ComponentActivity() {
         if (scheme == "tel" && schemeSpecific.isNotBlank()) {
             when (action) {
                 Intent.ACTION_CALL, "android.intent.action.CALL_PRIVILEGED" -> {
-                    viewModel.initiateCall(schemeSpecific)
+                    val callingPkg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) callingPackage else null
+                    val hasCallPhone = callingPkg != null && packageManager.checkPermission(Manifest.permission.CALL_PHONE, callingPkg) == PackageManager.PERMISSION_GRANTED
+                    if (hasCallPhone) {
+                        viewModel.initiateCall(schemeSpecific)
+                    } else {
+                        viewModel.setDialerNumber(schemeSpecific)
+                        viewModel.navigateTo(Screen.Dialer)
+                    }
                 }
                 Intent.ACTION_DIAL, Intent.ACTION_VIEW -> {
                     viewModel.setDialerNumber(schemeSpecific)

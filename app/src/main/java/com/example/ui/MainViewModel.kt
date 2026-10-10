@@ -580,4 +580,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.setCallLogsSyncConsent(consent)
         showStatus(if (consent) "Call log sync consent enabled" else "Call log sync consent disabled")
     }
+
+    fun checkDeviceSecurityAndAutoDisableLock(context: Context) {
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+        val isSecure = keyguardManager?.isDeviceSecure == true
+        if (!isSecure && isAppLockEnabled.value) {
+            setAppLock(false)
+            showStatus("App Lock automatically disabled because phone screen lock was removed.")
+        }
+    }
 }

@@ -55,7 +55,15 @@ data class ActiveCallSession(
     val isSpam: Boolean = false,
     val signalLevel: Int = 4,
     val signalDbm: Int = -78,
-    val networkType: String = "Cellular Network"
+    val networkType: String = "Cellular Network",
+    val hasMultipleCalls: Boolean = false,
+    val secondaryNumber: String = "",
+    val secondaryDisplayName: String = "",
+    val secondaryIsIncoming: Boolean = false,
+    val canSwap: Boolean = false,
+    val canMerge: Boolean = false,
+    val networkCallerName: String? = null,
+    val locationAndCarrier: String? = null
 )
 
 class CallManager private constructor(context: Context) {
@@ -277,20 +285,12 @@ class CallManager private constructor(context: Context) {
                     val matchingSub = subInfoList.find { it.simSlotIndex + 1 == slotIndex }
                     if (matchingSub != null) {
                         val subIdStr = matchingSub.subscriptionId.toString()
-                        val matchedHandle = handles.find { handle ->
-                            handle.id == subIdStr || handle.id.contains(subIdStr) || handle.id == matchingSub.iccId
-                        }
+                        val matchedHandle = handles.find { handle -> handle.id == subIdStr }
                         if (matchedHandle != null) return matchedHandle
                     }
                 }
             }
-
-            // Only supply explicit handle if multiple SIM accounts exist
-            if (handles.size > 1) {
-                handles.getOrNull(slotIndex - 1)
-            } else {
-                null
-            }
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Error resolving PhoneAccountHandle for slot $slotIndex", e)
             null
@@ -368,15 +368,31 @@ class CallManager private constructor(context: Context) {
     }
 
     private fun updateSessionFromTelecomCall(call: Call) {
-        val handle = call.details?.handle
+        val allCallsList = NovaDialInCallService.allCalls.value
+        val primaryCall = allCallsList.firstOrNull { it.state != Call.STATE_DISCONNECTED } ?: call
+        val secondaryCall = allCallsList.firstOrNull { it !== primaryCall && it.state != Call.STATE_DISCONNECTED }
+
+        val handle = primaryCall.details?.handle
         val number = handle?.schemeSpecificPart ?: _activeSession.value.number
         val callerInfo = com.example.data.repository.DeviceContactsHelper.lookupCallerInfo(context, number)
-        val callerName = call.details?.callerDisplayName?.ifBlank { null }
+        val networkCnap = primaryCall.details?.callerDisplayName?.ifBlank { null }
+        val callerName = networkCnap
             ?: callerInfo.first
             ?: _activeSession.value.displayName.ifBlank { null }
             ?: PhoneNumberUtils.formatForDisplay(number)
 
-        val mappedState = when (call.state) {
+        val locationCarrier = resolveLocationAndCarrier(number)
+
+        val hasMulti = secondaryCall != null
+        val secNumber = secondaryCall?.details?.handle?.schemeSpecificPart ?: ""
+        val secInfo = if (secNumber.isNotBlank()) com.example.data.repository.DeviceContactsHelper.lookupCallerInfo(context, secNumber) else Pair(null, null)
+        val secName = secondaryCall?.details?.callerDisplayName?.ifBlank { null } ?: secInfo.first ?: PhoneNumberUtils.formatForDisplay(secNumber)
+        val secIncoming = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) secondaryCall?.details?.callDirection == Call.Details.DIRECTION_INCOMING else false
+
+        val canSwap = allCallsList.size >= 2
+        val canMerge = allCallsList.size >= 2 && allCallsList.any { it.state == Call.STATE_ACTIVE } && allCallsList.any { it.state == Call.STATE_HOLDING }
+
+        val mappedState = when (primaryCall.state) {
             Call.STATE_RINGING -> CallSessionState.RINGING
             Call.STATE_DIALING, Call.STATE_CONNECTING -> CallSessionState.DIALING
             Call.STATE_ACTIVE -> CallSessionState.CONNECTED
@@ -386,7 +402,7 @@ class CallManager private constructor(context: Context) {
         }
 
         val direction = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            call.details?.callDirection
+            primaryCall.details?.callDirection
         } else {
             -1
         }
@@ -396,13 +412,12 @@ class CallManager private constructor(context: Context) {
         val isIncoming = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             direction == android.telecom.Call.Details.DIRECTION_INCOMING
         } else {
-            // before Android 10 there is no direction: a call that rang stays "incoming" after it is answered
-            call.state == Call.STATE_RINGING || (previousStillThisCall && previous.isIncoming)
+            primaryCall.state == Call.STATE_RINGING || (previousStillThisCall && previous.isIncoming)
         }
-        val isHeld = call.state == Call.STATE_HOLDING
+        val isHeld = primaryCall.state == Call.STATE_HOLDING
 
-        val duration = if (call.state == Call.STATE_ACTIVE || call.state == Call.STATE_HOLDING) {
-            realDurationSeconds(call) ?: _activeSession.value.durationSeconds
+        val duration = if (primaryCall.state == Call.STATE_ACTIVE || primaryCall.state == Call.STATE_HOLDING) {
+            realDurationSeconds(primaryCall) ?: _activeSession.value.durationSeconds
         } else {
             _activeSession.value.durationSeconds
         }
@@ -413,12 +428,39 @@ class CallManager private constructor(context: Context) {
             state = mappedState,
             isIncoming = isIncoming,
             isHeld = isHeld,
-            durationSeconds = duration
+            durationSeconds = duration,
+            hasMultipleCalls = hasMulti,
+            secondaryNumber = secNumber,
+            secondaryDisplayName = secName,
+            secondaryIsIncoming = secIncoming,
+            canSwap = canSwap,
+            canMerge = canMerge,
+            networkCallerName = networkCnap,
+            locationAndCarrier = locationCarrier
         )
 
         if (mappedState == CallSessionState.CONNECTED && callTimerJob == null) {
             startDurationTimer()
         }
+    }
+
+    private fun resolveLocationAndCarrier(number: String): String? {
+        return try {
+            val phoneUtil = com.google.i18n.phonenumbers.PhoneNumberUtil.getInstance()
+            val parsedNumber = phoneUtil.parse(number, "IN")
+            val region = phoneUtil.getRegionCodeForNumber(parsedNumber)
+            if (!region.isNullOrBlank()) "Region: $region" else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun swapCalls() {
+        NovaDialInCallService.swapCalls()
+    }
+
+    fun mergeCalls() {
+        NovaDialInCallService.mergeCalls()
     }
 
     fun rejectWithSms(number: String, message: String) {
@@ -523,36 +565,7 @@ class CallManager private constructor(context: Context) {
 
         val session = _activeSession.value
         val duration = session.durationSeconds
-        _activeSession.value = session.copy(state = CallSessionState.DISCONNECTED)
-
-        if (session.number.isNotBlank()) {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val db = com.example.data.local.AppDatabase.getDatabase(context)
-                    val norm = PhoneNumberUtils.normalize(session.number)
-                    val isBlocked = db.blockedNumberDao().isNumberBlocked(norm) > 0
-                    val callType = if (session.isIncoming) com.example.data.model.CallType.INCOMING else com.example.data.model.CallType.OUTGOING
-                    val log = com.example.data.model.CallLogEntry(
-                        number = session.number,
-                        normalizedNumber = norm,
-                        callerName = session.displayName,
-                        callType = if (isBlocked) com.example.data.model.CallType.BLOCKED else callType,
-                        timestamp = System.currentTimeMillis(),
-                        durationSeconds = duration,
-                        simSlot = session.simSlot,
-                        isSpam = session.isSpam
-                    )
-                    db.callLogDao().insertCallLog(log)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-
-        scope.launch {
-            delay(500)
-            _activeSession.value = ActiveCallSession(state = CallSessionState.IDLE)
-        }
+        _activeSession.value = session.copy(state = CallSessionState.IDLE)
 
         return Pair(session, duration)
     }

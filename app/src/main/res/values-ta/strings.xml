@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">NovaDial</string>
+    <string name="nav_home">முகப்பு</string>
+    <string name="nav_recents">சமீபத்தியவை</string>
+    <string name="nav_favorites">விருப்பமானவை</string>
+    <string name="call_end">அழைப்பை துண்டி</string>
+    <string name="call_answer">பதில் அளி</string>
+    <string name="call_decline">நிராகரி</string>
+    <string name="call_mute">முடக்கு</string>
+    <string name="call_speaker">ஸ்பீக்கர்</string>
+    <string name="call_hold">நிறுத்தி வை</string>
+    <string name="call_keypad">விசைப்பலகை</string>
+    <string name="settings_title">அமைப்புகள்</string>
+    <string name="emergency_sos">அவசர SOS</string>
+    <string name="spam_shield">ஸ்பேம் பாதுகாப்பு</string>
+    <string name="announcer_template_friendly">{name} இடமிருந்து அழைப்பு வருகிறது</string>
+</resources>

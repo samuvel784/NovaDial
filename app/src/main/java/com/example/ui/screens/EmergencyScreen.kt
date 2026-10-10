@@ -247,11 +247,7 @@ fun EmergencyScreen(
                                     },
                                     label = {
                                         Text(
-                                            text = when (mode) {
-                                                EmergencyTriggerMode.POWER_TRIPLE_PRESS -> "Power (3x)"
-                                                EmergencyTriggerMode.SHAKE_GESTURE -> "Shake"
-                                                EmergencyTriggerMode.BOTH -> "Both"
-                                            },
+                                            text = "Shake Device",
                                             fontSize = 11.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         )

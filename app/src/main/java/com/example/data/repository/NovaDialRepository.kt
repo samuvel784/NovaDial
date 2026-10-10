@@ -63,7 +63,10 @@ class NovaDialRepository(private val context: Context) {
     }
 
     fun getContactsSyncConsent(): Boolean {
-        return privacyPrefs.getBoolean("sync_contacts_consent", false)
+        if (!privacyPrefs.contains("sync_contacts_consent")) {
+            return DeviceContactsHelper.hasContactsPermission(context)
+        }
+        return privacyPrefs.getBoolean("sync_contacts_consent", true)
     }
 
     fun setCallLogsSyncConsent(consent: Boolean) {
@@ -75,13 +78,23 @@ class NovaDialRepository(private val context: Context) {
     }
 
     fun getCallLogsSyncConsent(): Boolean {
-        return privacyPrefs.getBoolean("sync_call_logs_consent", false)
+        if (!privacyPrefs.contains("sync_call_logs_consent")) {
+            return DeviceContactsHelper.hasCallLogPermission(context)
+        }
+        return privacyPrefs.getBoolean("sync_call_logs_consent", true)
     }
 
     private fun unregisterCallLogObserver() {
         try {
             context.contentResolver.unregisterContentObserver(callLogObserver)
-            android.util.Log.d("PrivacyAudit", "CallLog ContentObserver unregistered due to revoked consent or permission.")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun unregisterContactObserver() {
+        try {
+            context.contentResolver.unregisterContentObserver(contactObserver)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -96,6 +109,17 @@ class NovaDialRepository(private val context: Context) {
         }
     }
 
+    private val contactObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            CoroutineScope(Dispatchers.IO).launch {
+                if (DeviceContactsHelper.hasContactsPermission(context) && getContactsSyncConsent()) {
+                    syncWithDeviceContacts()
+                }
+            }
+        }
+    }
+
     init {
         try {
             if (DeviceContactsHelper.hasCallLogPermission(context) && getCallLogsSyncConsent()) {
@@ -103,6 +127,13 @@ class NovaDialRepository(private val context: Context) {
                     android.provider.CallLog.Calls.CONTENT_URI,
                     true,
                     callLogObserver
+                )
+            }
+            if (DeviceContactsHelper.hasContactsPermission(context) && getContactsSyncConsent()) {
+                context.contentResolver.registerContentObserver(
+                    android.provider.ContactsContract.Contacts.CONTENT_URI,
+                    true,
+                    contactObserver
                 )
             }
         } catch (e: Exception) {

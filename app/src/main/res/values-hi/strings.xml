@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">NovaDial</string>
+    <string name="nav_home">होम</string>
+    <string name="nav_recents">हाल ही के</string>
+    <string name="nav_favorites">पसंदीदा</string>
+    <string name="call_end">कॉल समाप्त करें</string>
+    <string name="call_answer">उत्तर दें</string>
+    <string name="call_decline">अस्वीकार करें</string>
+    <string name="call_mute">म्यूट</string>
+    <string name="call_speaker">स्पीकर</string>
+    <string name="call_hold">होल्ड</string>
+    <string name="call_keypad">कीपैड</string>
+    <string name="settings_title">सेटिंग्स</string>
+    <string name="emergency_sos">आपातकालीन SOS</string>
+    <string name="spam_shield">स्पैम सुरक्षा</string>
+    <string name="announcer_template_friendly">{name} से कॉल आ रही है</string>
+</resources>

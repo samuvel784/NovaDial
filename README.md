@@ -5,6 +5,8 @@ No sample data, no simulated calls, no cloud. NovaDial does not use the internet
 
 Package: `com.aistudio.novadial.kpxm` - minSdk 26 - targetSdk 36 - version 1.1.0
 
+> *Note on App Name:* Another open-source project named NovaDial exists; this repository is an independent implementation (`com.aistudio.novadial.kpxm`). Any third-party open-source code snippets retain their respective Apache-2.0 or MIT license credits and headers.
+
 ## Build
 1. Open the folder in **Android Studio** and let Gradle sync.
 2. Build Variants -> `debug` -> Build > Build APK(s). Install it on a real phone.
