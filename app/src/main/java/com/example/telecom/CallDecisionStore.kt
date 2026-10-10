@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2026 MovStore
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 package com.example.telecom
 
 import java.util.concurrent.ConcurrentHashMap

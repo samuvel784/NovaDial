@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2026 MovStore
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 package com.example.telecom
 
 import android.content.Context
@@ -9,7 +14,9 @@ import android.telecom.CallScreeningService
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
-import com.example.data.model.BlockAction
+import com.example.data.AppDatabase
+import com.example.data.DialerDao
+import com.example.util.BlockedNumberContractManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,21 +26,15 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Screens every incoming call BEFORE it rings:
  *  1. Emergency numbers are never touched.
- *  2. Numbers the user blocked, and spam rules the user set to "Auto-Block", are rejected.
- *  3. Spam rules set to "Silence" ring silently.
- *  4. Focus mode, protection level, VIP / favorites / repeat callers decide whether the call is silenced.
+ *  2. Numbers the user blocked, and numbers in the offline spam database, are rejected.
+ *  3. Focus mode, protection level, VIP / favorites / repeat callers decide whether the call is silenced.
  * A silenced call still appears in the call log as a missed call.
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class NovaDialCallScreeningService : CallScreeningService() {
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    private lateinit var detector: RealtimeSpamDetector
-
-    override fun onCreate() {
-        super.onCreate()
-        detector = RealtimeSpamDetector(applicationContext)
-    }
+    private val dao: DialerDao by lazy { AppDatabase.getDatabase(applicationContext).dialerDao() }
 
     override fun onScreenCall(callDetails: Call.Details) {
         val isIncoming = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
@@ -64,19 +65,25 @@ class NovaDialCallScreeningService : CallScreeningService() {
         // 1. Emergency numbers: never blocked, never silenced
         if (number.isNotBlank() && isEmergency(number)) return@withContext allow
 
-        // 2. Your blocklist and spam rules
+        // 2. Your blocklist and offline spam database
         if (number.isNotBlank()) {
-            val verdict = detector.screenIncomingCallerId(number)
-            if (verdict.isBlocked || (verdict.isSpam && verdict.action == BlockAction.AUTO_BLOCK)) {
-                Log.d(TAG, "Rejecting blocked call from $number: ${verdict.reason}")
+            val blocked = try {
+                BlockedNumberContractManager.isBlocked(applicationContext, number, dao)
+            } catch (e: Exception) {
+                false
+            }
+            val spam = try {
+                dao.isSpamNumber(number) || dao.isSpamNumber(number.filter { it.isDigit() })
+            } catch (e: Exception) {
+                false
+            }
+            if (blocked || spam) {
+                Log.d(TAG, "Rejecting blocked/spam call from $number")
                 return@withContext CallResponse.Builder()
                     .setDisallowCall(true)
                     .setRejectCall(true)
                     .setSkipNotification(true)
                     .build()
-            }
-            if (verdict.isSpam && verdict.action == BlockAction.SILENCE_RINGTONE) {
-                return@withContext silenced(number)
             }
         }
 
@@ -114,8 +121,10 @@ class NovaDialCallScreeningService : CallScreeningService() {
             @Suppress("DEPRECATION")
             android.telephony.PhoneNumberUtils.isEmergencyNumber(number)
         } catch (e: Exception) {
-            false
-        } || com.example.util.PhoneNumberUtils.isEmergencyNumber(number)
+            val clean = number.replace(Regex("[^0-9]"), "")
+            clean == "911" || clean == "112" || clean == "999" || clean == "108" ||
+                clean == "000" || clean == "110" || clean == "119"
+        }
     }
 
     /** Returns (isSavedContact, isFavorite) from the phone's real address book. */

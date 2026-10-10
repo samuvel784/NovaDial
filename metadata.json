@@ -1,6 +1,6 @@
 {
   "name": "NovaDial",
-  "description": "Real default dialer: calls, contacts, call log and voicemail from the phone. Call blocking, Focus mode, VIP numbers and a caller-name announcer. No sample data and no internet use.",
+  "description": "Real default dialer: calls, contacts, call log and voicemail from your phone. Focus mode, call protection, VIP numbers and a caller-name announcer, wrapped in the distinct indigo-to-violet Aurora design. No sample data and no internet use.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

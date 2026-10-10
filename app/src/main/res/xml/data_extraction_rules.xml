@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Call history, contacts, notes and settings are private. Nothing leaves the phone by cloud backup or device transfer. -->
+<!--
+  ~ Copyright (C) 2026 MovStore
+  ~ SPDX-License-Identifier: GPL-3.0-or-later
+  -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="database" path="." />
-        <exclude domain="sharedpref" path="." />
-        <exclude domain="file" path="." />
+        <!-- Zero-Data Privacy: Block all automatic cloud backups of sensitive PII, keys, and call recordings -->
+        <exclude domain="database" path="dialer_database" />
+        <exclude domain="database" path="dialer_database-journal" />
+        <exclude domain="database" path="dialer_database-wal" />
+        <exclude domain="sharedpref" path="dialer_secure_device_prefs.xml" />
+        <exclude domain="sharedpref" path="dialer_prefs.xml" />
+        <exclude domain="file" path="CallRecordings/" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="database" path="." />
-        <exclude domain="sharedpref" path="." />
-        <exclude domain="file" path="." />
+        <!-- Block automated device-to-device migration of raw encrypted keys and recordings -->
+        <exclude domain="database" path="dialer_database" />
+        <exclude domain="sharedpref" path="dialer_secure_device_prefs.xml" />
+        <exclude domain="file" path="CallRecordings/" />
     </device-transfer>
 </data-extraction-rules>

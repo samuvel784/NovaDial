@@ -1,10 +1,14 @@
+/*
+ * Copyright (C) 2026 MovStore
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 package com.example.telecom
 
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
-import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
@@ -12,7 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.util.Log
-import com.example.data.repository.DeviceContactsHelper
+import com.example.getContactNameFromNumber
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -38,7 +42,6 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
     private var requestId = 0
     private var script: List<AnnouncerScript.Line> = emptyList()
     private val scheduled = mutableListOf<Runnable>()
-    private var focusRequest: AudioFocusRequest? = null
     private val focusListener = AudioManager.OnAudioFocusChangeListener { }
 
     init {
@@ -77,7 +80,7 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
 
         // contact lookups use content providers, so they run off the main thread
         background.execute {
-            val savedName = DeviceContactsHelper.lookupCallerInfo(appContext, number).first
+            val savedName = getContactNameFromNumber(appContext, number)
             val isSaved = savedName != null
             val isVip = CallProtectionPrefs.isVip(appContext, number)
             val silencedByRules = CallDecisionStore.wasSilenced(number)
@@ -231,17 +234,12 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
     private fun requestAudioFocus() {
         try {
             val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-            val request = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                )
-                .setOnAudioFocusChangeListener(focusListener)
-                .build()
-            focusRequest = request
-            audio.requestAudioFocus(request)
+            @Suppress("DEPRECATION")
+            audio.requestAudioFocus(
+                focusListener,
+                AudioManager.STREAM_RING,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            )
         } catch (e: Exception) {
             Log.w(TAG, "Audio focus request failed", e)
         }
@@ -250,7 +248,8 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
     private fun abandonAudioFocus() {
         try {
             val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-            focusRequest?.let { audio.abandonAudioFocusRequest(it) }
+            @Suppress("DEPRECATION")
+            audio.abandonAudioFocus(focusListener)
         } catch (e: Exception) {
             Log.w(TAG, "Audio focus abandon failed", e)
         }

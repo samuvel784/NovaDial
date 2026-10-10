@@ -1,301 +1,458 @@
+/*
+ * Copyright (C) 2026 MovStore
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.example
 
-import android.Manifest
+import android.app.KeyguardManager
+import android.app.role.RoleManager
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.telecom.TelecomManager
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.ui.MainViewModel
-import com.example.ui.Screen
-import com.example.ui.screens.*
-import com.example.ui.theme.*
-import kotlinx.coroutines.launch
+import androidx.core.content.ContextCompat
+import com.example.ui.MainScreen
+import com.example.ui.theme.AppShapes
+import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.viewmodel.DialerViewModel
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: MainViewModel by viewModels()
+
+    private val viewModel: DialerViewModel by viewModels()
+    private val isAppAuthenticated = mutableStateOf(false)
+    private var isAuthenticating = false
+    private var isAppStopped = false
+    private var isLaunchedForCall = false
+
+    val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.hasRecordAudioPermission.value = isGranted
+    }
+
+    private val authLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isAuthenticating = false
+        isAppAuthenticated.value = (result.resultCode == RESULT_OK)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CallManager.appContext = applicationContext
+        volumeControlStream = AudioManager.STREAM_VOICE_CALL
+
+        // Protect PII from OS switcher task snapshots
+        if (!BuildConfig.DEBUG) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        }
+
+        // FIXED: Do not restore authentication across process recreation if biometric lock is enabled
+        if (savedInstanceState != null && !viewModel.isBiometricLockEnabled.value) {
+            isAppAuthenticated.value = savedInstanceState.getBoolean("is_authenticated", false)
+        } else {
+            isAppAuthenticated.value = !viewModel.isBiometricLockEnabled.value
+        }
+
         enableEdgeToEdge()
-        handleCallIntent(intent)
+
+        val hasRealCall = CallManager.currentCall.value != null ||
+                CallManager.calls.value.isNotEmpty() ||
+                viewModel.isFakeCallActive.value
+        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+            setLockScreenVisibility(true)
+        }
+
+        try {
+            handleIntent(intent)
+        } catch (_: Exception) {}
 
         setContent {
-            val themeMode by viewModel.themeMode.collectAsState()
-            NovaDialTheme(themeMode = themeMode) {
-                NovaDialApp(viewModel = viewModel)
+            val context = LocalContext.current
+            var showRestrictedSettingsDialog by remember { mutableStateOf(false) }
+            val themeMode by viewModel.themeMode
+            val isCallActive by viewModel.isCallActive
+
+            // FIXED: Prevent lock screen back-gesture from revealing private contacts or recents
+            val keyguardManager = remember { context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager }
+            BackHandler(enabled = keyguardManager?.isKeyguardLocked == true) {
+                if (isCallActive) {
+                    moveTaskToBack(true)
+                } else {
+                    dismissCallUiAndExit()
+                }
+            }
+
+            LaunchedEffect(isCallActive) {
+                try {
+                    setLockScreenVisibility(isCallActive)
+                    if (!isCallActive && isLaunchedForCall && CallManager.calls.value.isEmpty() && !viewModel.isFakeCallActive.value) {
+                        dismissCallUiAndExit()
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                        updateDefaultDialerStatus(context)
+                        val hasActiveCall = CallManager.currentCall.value != null ||
+                                CallManager.calls.value.isNotEmpty() ||
+                                viewModel.isFakeCallActive.value
+                        if (hasActiveCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+                            isAppAuthenticated.value = true
+                            setLockScreenVisibility(true)
+                        } else if (viewModel.isBiometricLockEnabled.value) {
+                            if (!isAuthenticating && !isAppAuthenticated.value) {
+                                triggerDeviceAuthentication()
+                            }
+                        } else {
+                            isAppAuthenticated.value = true
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+
+            LaunchedEffect(Unit) {
+                updateDefaultDialerStatus(context)
+            }
+
+            if (showRestrictedSettingsDialog) {
+                RestrictedSettingsDialog(
+                    onDismiss = { showRestrictedSettingsDialog = false },
+                    onOpenSettings = {
+                        showRestrictedSettingsDialog = false
+                        try {
+                            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", packageName, null)
+                            })
+                        } catch (_: Exception) {}
+                    }
+                )
+            }
+
+            val currentThemeColor by viewModel.themeColor
+            val customColorHex by viewModel.customColorHex
+            val isAmoledMode by viewModel.isAmoledMode
+            val isM3Expressive by viewModel.isM3Expressive
+            val useDynamicColor by viewModel.useDynamicColor
+
+            MyApplicationTheme(
+                themeMode = themeMode,
+                dynamicColor = useDynamicColor,
+                themeColor = currentThemeColor,
+                customColorHex = customColorHex,
+                isAmoledMode = isAmoledMode,
+                isM3Expressive = isM3Expressive
+            ) {
+                if (isAppAuthenticated.value) {
+                    MainScreen(
+                        viewModel = viewModel,
+                        onShowRestrictedSettings = { showRestrictedSettingsDialog = true },
+                        isDefaultDialer = viewModel.isDefaultDialer.value
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(32.dp)
+                            ) {
+                                Surface(
+                                    shape = AppShapes.Avatar,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    tonalElevation = 4.dp,
+                                    modifier = Modifier.size(96.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "App Locked",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.size(24.dp))
+
+                                Text(
+                                    text = "NovaDial Locked",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+
+                                Spacer(modifier = Modifier.size(12.dp))
+
+                                Text(
+                                    text = "This app is secured to protect your privacy. Please authenticate with your device lock to continue.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(modifier = Modifier.size(36.dp))
+
+                                Button(
+                                    onClick = { triggerDeviceAuthentication() },
+                                    modifier = Modifier.fillMaxWidth(0.7f)
+                                ) {
+                                    Text(text = "Unlock Dialer", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Only preserve authentication in state if biometric lock is turned off
+        if (!viewModel.isBiometricLockEnabled.value) {
+            outState.putBoolean("is_authenticated", isAppAuthenticated.value)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        CallManager.setAppInForeground(false)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        CallManager.setAppInForeground(false)
+        isAppStopped = true
+    }
+
     override fun onResume() {
         super.onResume()
-        viewModel.checkDefaultDialer(this)
-        viewModel.checkDeviceSecurityAndAutoDisableLock(this)
+        volumeControlStream = AudioManager.STREAM_VOICE_CALL
+        CallManager.setAppInForeground(true)
+        updateDefaultDialerStatus(this)
+        viewModel.hasRecordAudioPermission.value = ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun onStart() {
+        super.onStart()
+        volumeControlStream = AudioManager.STREAM_VOICE_CALL
+        CallManager.setAppInForeground(true)
+        val hasRealCall = CallManager.currentCall.value != null ||
+                CallManager.calls.value.isNotEmpty() ||
+                viewModel.isFakeCallActive.value
+        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+            isAppAuthenticated.value = true
+            setLockScreenVisibility(true)
+        } else if (isAppStopped) {
+            isAppStopped = false
+            if (viewModel.isBiometricLockEnabled.value) {
+                isAppAuthenticated.value = false
+            }
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        val hasRealCall = CallManager.currentCall.value != null ||
+                CallManager.calls.value.isNotEmpty() ||
+                viewModel.isFakeCallActive.value
+        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+            setLockScreenVisibility(true)
+        }
+    }
+
+    private fun triggerDeviceAuthentication() {
+        if (isAuthenticating) return
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager ?: return
+        if (keyguardManager.isDeviceSecure) {
+            val intent = keyguardManager.createConfirmDeviceCredentialIntent(
+                "NovaDial",
+                "Authenticate to open NovaDial"
+            )
+            if (intent != null) {
+                isAuthenticating = true
+                try {
+                    authLauncher.launch(intent)
+                } catch (_: Exception) {
+                    // FIXED: Prevent deadlock if OS fails to launch credential chooser
+                    isAuthenticating = false
+                    isAppAuthenticated.value = false
+                }
+            } else {
+                isAppAuthenticated.value = true
+            }
+        } else {
+            isAppAuthenticated.value = true
+        }
+    }
+
+    private fun dismissCallUiAndExit() {
+        setLockScreenVisibility(false)
+        if (isLaunchedForCall) {
+            isLaunchedForCall = false
+            viewModel.isLaunchedForCall.value = false
+            if (viewModel.isBiometricLockEnabled.value) {
+                isAppAuthenticated.value = false
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                finishAndRemoveTask()
+            } else {
+                finish()
+            }
+        }
+    }
+
+    private fun setLockScreenVisibility(show: Boolean) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(show)
+                setTurnScreenOn(show)
+            }
+            @Suppress("DEPRECATION")
+            if (show) {
+                window.addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                )
+                val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    km?.requestDismissKeyguard(this, null)
+                }
+            } else {
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                )
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun updateDefaultDialerStatus(context: Context) {
+        viewModel.isDefaultDialer.value = com.example.util.CallScreenPermissionHelper.isDefaultDialer(context)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleCallIntent(intent)
-        viewModel.checkDefaultDialer(this)
+        handleIntent(intent)
     }
 
-    private fun handleCallIntent(intent: Intent?) {
+    private fun handleIntent(intent: Intent?) {
         if (intent == null) return
-        val action = intent.action ?: return
+
+        if (intent.getBooleanExtra("TRIGGER_FAKE_CALL", false)) {
+            if (viewModel.isFakeCallSimulatorEnabled.value) {
+                viewModel.isFakeCallActive.value = true
+                viewModel.fakeCallerName.value = intent.getStringExtra("FAKE_CALLER_NAME") ?: "Unknown"
+                viewModel.fakeCallerNumber.value = intent.getStringExtra("FAKE_CALLER_NUMBER") ?: "Unknown"
+                viewModel.fakeCallState.value = "RINGING"
+                viewModel.isSettingsVisible.value = false
+                viewModel.isCallMinimized.value = false
+                isAppAuthenticated.value = true
+                setLockScreenVisibility(true)
+            }
+        }
+
+        if (intent.getBooleanExtra("ANSWER_ON_LAUNCH", false) || intent.action == MyInCallService.ACTION_ANSWER) {
+            CallManager.answer()
+            isLaunchedForCall = true
+            viewModel.isLaunchedForCall.value = true
+            viewModel.isCallMinimized.value = false
+            isAppAuthenticated.value = true
+            setLockScreenVisibility(true)
+        }
+
+        val hasGenuineActiveCall = CallManager.currentCall.value != null ||
+                CallManager.calls.value.isNotEmpty() ||
+                viewModel.isFakeCallActive.value
+        if (hasGenuineActiveCall) {
+            isLaunchedForCall = true
+            viewModel.isLaunchedForCall.value = true
+            viewModel.isCallMinimized.value = false
+            isAppAuthenticated.value = true
+            setLockScreenVisibility(true)
+        }
+
+        if (intent.getBooleanExtra("SHOW_CALL_LOG", false) || intent.getBooleanExtra("MISSED_CALL", false) || intent.action == "com.example.dialer.ACTION_MISSED_CALLS") {
+            viewModel.selectTabBySlotKey("RECENTS")
+        }
+
+        val action = intent.action
         val data = intent.data
-        val scheme = data?.scheme
-        val schemeSpecific = data?.schemeSpecificPart ?: ""
-
-        if (scheme == "tel" && schemeSpecific.isNotBlank()) {
-            when (action) {
-                Intent.ACTION_CALL, "android.intent.action.CALL_PRIVILEGED" -> {
-                    val callingPkg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) callingPackage else null
-                    val hasCallPhone = callingPkg != null && packageManager.checkPermission(Manifest.permission.CALL_PHONE, callingPkg) == PackageManager.PERMISSION_GRANTED
-                    if (hasCallPhone) {
-                        viewModel.initiateCall(schemeSpecific)
-                    } else {
-                        viewModel.setDialerNumber(schemeSpecific)
-                        viewModel.navigateTo(Screen.Dialer)
-                    }
-                }
-                Intent.ACTION_DIAL, Intent.ACTION_VIEW -> {
-                    viewModel.setDialerNumber(schemeSpecific)
-                    viewModel.navigateTo(Screen.Dialer)
+        if (action == Intent.ACTION_CALL || action == Intent.ACTION_DIAL || action == Intent.ACTION_VIEW) {
+            if (data?.scheme == "tel") {
+                val number = data.schemeSpecificPart ?: ""
+                if (number.isNotEmpty()) {
+                    // SEC-02: Populate dialpad preview instead of placing call directly to avoid confused deputy attacks
+                    viewModel.dialpadInput.value = number
+                    viewModel.selectTabBySlotKey("DIALPAD")
                 }
             }
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        viewModel.lockApp()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NovaDialApp(viewModel: MainViewModel) {
-    val currentScreen by viewModel.currentScreen.collectAsState()
-    val isAppLocked by viewModel.isAppLocked.collectAsState()
-    val statusMessage by viewModel.statusMessage.collectAsState()
-    val activeCallSession by viewModel.activeCallSession.collectAsState()
-    val postCallSheetSession by viewModel.postCallSheetSession.collectAsState()
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    // Request permissions gracefully on first launch
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val contactsGranted = permissions[Manifest.permission.READ_CONTACTS] == true
-        val callLogGranted = permissions[Manifest.permission.READ_CALL_LOG] == true
-        if (contactsGranted || callLogGranted) {
-            scope.launch {
-                viewModel.repository.syncWithDeviceContacts()
-                viewModel.refreshDuplicates()
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val permissionsToRequest = mutableListOf(
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.READ_PHONE_NUMBERS,
-            Manifest.permission.ANSWER_PHONE_CALLS
-        )
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        permissionLauncher.launch(permissionsToRequest.toTypedArray())
-    }
-
-    LaunchedEffect(statusMessage) {
-        statusMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearStatusMessage()
-        }
-    }
-
-    val isCallActive = activeCallSession.state != com.example.telecom.CallSessionState.IDLE
-    if (isAppLocked && !isCallActive) {
-        AppLockScreen(viewModel = viewModel)
-        return
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = AppTheme.colors.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            floatingActionButton = {
-                val showKeypadFab = currentScreen !is Screen.Dialer &&
-                        currentScreen !is Screen.EditContact &&
-                        currentScreen !is Screen.Emergency
-
-                if (showKeypadFab) {
-                    FloatingActionButton(
-                        onClick = { viewModel.navigateTo(Screen.Dialer) },
-                        containerColor = AppTheme.colors.primary,
-                        contentColor = if (AppTheme.colors.isLight) Color.White else Color.Black,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .testTag("constant_keypad_fab")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Dialpad,
-                            contentDescription = "Open Keypad",
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
+    @Composable
+    private fun RestrictedSettingsDialog(onDismiss: () -> Unit, onOpenSettings: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.restricted_settings_title)) },
+            text = { Text(stringResource(R.string.restricted_settings_desc)) },
+            confirmButton = {
+                TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.btn_open_settings)) }
             },
-            floatingActionButtonPosition = FabPosition.End,
-            bottomBar = {
-                // Bottom navigation bar is visible on root primary tabs: Home, Recent, Favorites
-                val isRootTab = currentScreen is Screen.Home ||
-                        currentScreen is Screen.Recents ||
-                        currentScreen is Screen.Favorites
-
-                if (isRootTab) {
-                    NavigationBar(
-                        containerColor = AppTheme.colors.surface,
-                        contentColor = AppTheme.colors.textPrimary,
-                        tonalElevation = 8.dp,
-                        modifier = Modifier
-                            .testTag("main_navigation_bar")
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                    ) {
-                        // 1. HOME (Default)
-                        NavigationBarItem(
-                            selected = currentScreen is Screen.Home,
-                            onClick = { viewModel.navigateTo(Screen.Home) },
-                            icon = { Icon(Icons.Default.People, contentDescription = "Home") },
-                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (AppTheme.colors.isLight) Color.White else Color.Black,
-                                selectedTextColor = AppTheme.colors.primary,
-                                indicatorColor = AppTheme.colors.primary,
-                                unselectedIconColor = AppTheme.colors.textSecondary,
-                                unselectedTextColor = AppTheme.colors.textSecondary
-                            ),
-                            modifier = Modifier.testTag("nav_item_home")
-                        )
-
-                        // 2. RECENT (Call Logs & Voicemail)
-                        NavigationBarItem(
-                            selected = currentScreen is Screen.Recents,
-                            onClick = { viewModel.navigateTo(Screen.Recents) },
-                            icon = { Icon(Icons.Default.History, contentDescription = "Recent") },
-                            label = { Text("Recent", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (AppTheme.colors.isLight) Color.White else Color.Black,
-                                selectedTextColor = AppTheme.colors.primary,
-                                indicatorColor = AppTheme.colors.primary,
-                                unselectedIconColor = AppTheme.colors.textSecondary,
-                                unselectedTextColor = AppTheme.colors.textSecondary
-                            ),
-                            modifier = Modifier.testTag("nav_item_recents")
-                        )
-
-                        // 3. FAVORITES
-                        NavigationBarItem(
-                            selected = currentScreen is Screen.Favorites,
-                            onClick = { viewModel.navigateTo(Screen.Favorites) },
-                            icon = { Icon(Icons.Default.Star, contentDescription = "Favorites") },
-                            label = { Text("Favorites", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (AppTheme.colors.isLight) Color.White else Color.Black,
-                                selectedTextColor = AppTheme.colors.tertiary,
-                                indicatorColor = AppTheme.colors.tertiary,
-                                unselectedIconColor = AppTheme.colors.textSecondary,
-                                unselectedTextColor = AppTheme.colors.textSecondary
-                            ),
-                            modifier = Modifier.testTag("nav_item_favorites")
-                        )
-                    }
-                }
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
             }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                when (val screen = currentScreen) {
-                    is Screen.Home -> HomeScreen(viewModel = viewModel)
-                    is Screen.Recents -> RecentsScreen(viewModel = viewModel)
-                    is Screen.Dialer -> DialerScreen(viewModel = viewModel)
-                    is Screen.Favorites -> FavoritesScreen(viewModel = viewModel)
-                    is Screen.Contacts -> HomeScreen(viewModel = viewModel)
-                    is Screen.ImportedContacts -> ImportedContactsScreen(viewModel = viewModel)
-                    is Screen.ContactDetail -> ContactDetailScreen(contactId = screen.contactId, viewModel = viewModel)
-                    is Screen.EditContact -> EditContactScreen(contactId = screen.contactId, viewModel = viewModel)
-                    is Screen.DuplicateReview -> DuplicateReviewScreen(viewModel = viewModel)
-                    is Screen.Backup -> BackupScreen(viewModel = viewModel)
-                    is Screen.Settings -> SettingsScreen(viewModel = viewModel)
-                    is Screen.Analytics -> AnalyticsScreen(viewModel = viewModel)
-                    is Screen.Emergency -> EmergencyScreen(viewModel = viewModel)
-                    is Screen.SpamBlocklistManager -> SpamBlocklistManagerScreen(viewModel = viewModel)
-                }
-            }
-        }
-
-        // Active Call Screen Overlay with real-time Signal Strength & Quality Indicators
-        AnimatedVisibility(
-            visible = activeCallSession.state != com.example.telecom.CallSessionState.IDLE,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            ActiveCallScreen(viewModel = viewModel)
-        }
-
-        // Post-Call Quick Notes & Action Bar Sheet
-        postCallSheetSession?.let { session ->
-            com.example.ui.components.PostCallSheet(
-                session = session,
-                onDismiss = { viewModel.dismissPostCallSheet() },
-                onSaveNote = { num, name, note ->
-                    viewModel.addPostCallNote(num, name, note)
-                },
-                onSaveContact = { num ->
-                    viewModel.setDialerNumber(num)
-                    viewModel.navigateTo(Screen.EditContact())
-                    viewModel.dismissPostCallSheet()
-                },
-                onReportSpam = { num, cat, comment ->
-                    viewModel.submitSpamReport(num, cat, comment)
-                }
-            )
-        }
+        )
     }
 }

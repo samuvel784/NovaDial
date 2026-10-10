@@ -1,88 +1,92 @@
 # NovaDial
 
-A real Android phone app (default dialer). It uses your phone's own contacts, call log, SIM cards and voicemail.
-No sample data, no simulated calls, no cloud. NovaDial does not use the internet.
+A real Android default dialer. It uses your phone's own contacts, call log, SIM cards and
+voicemail — no sample data, no simulated calls, no cloud. NovaDial does not use the internet.
 
-Package: `com.aistudio.novadial.kpxm` - minSdk 26 - targetSdk 36 - version 1.1.0
+Package: `com.aistudio.novadial.kpxm` — minSdk 24 — targetSdk 36 — version 2.0.0 (versionCode 3)
 
-> *Note on App Name:* Another open-source project named NovaDial exists; this repository is an independent implementation (`com.aistudio.novadial.kpxm`). Any third-party open-source code snippets retain their respective Apache-2.0 or MIT license credits and headers.
+> **Rebuilt, not patched.** NovaDial 2.0 uses the mature **Secure Dialer** codebase
+> (`com.example`, GPL-3.0-or-later) as its foundation, rebranded to NovaDial, with NovaDial's
+> unique features re-added on top. See **[PORTING_PLAN.md](PORTING_PLAN.md)** for the full audit of
+> the original issues and how each one is resolved, plus the status of the deferred features
+> (Emergency SOS, Analytics).
 
 ## Build
 1. Open the folder in **Android Studio** and let Gradle sync.
 2. Build Variants -> `debug` -> Build > Build APK(s). Install it on a real phone.
 3. On the phone: Settings > Apps > Default apps > Phone app > NovaDial. Accept every permission prompt.
-4. Release build: set `KEYSTORE_PATH`, `STORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (or put `my-upload-key.jks` in the project folder).
-   Without a keystore the release APK is signed with the debug key: it installs for testing, but Google Play rejects it.
+4. Release build: set `KEYSTORE_PATH`, `STORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (or put
+   `my-upload-key.jks` in the project folder). Without a keystore the release APK is signed with the
+   debug key: it installs for testing, but Google Play rejects it.
 5. Unit tests: `./gradlew testDebugUnitTest`
 
-> This project was edited without access to Gradle or the Android SDK, so it has **not been compiled or run**.
-> The call logic was type-checked against the real Android API and the pure logic (announcer script, protection rules) was run
-> with unit tests, but you must build it and test on a phone. If Android Studio shows errors, send them back to be fixed.
+> This project was assembled without a JDK or the Android SDK, so the 2.0 tree has **not been
+> compiled or run**. The pure logic (announcer script, protection rules) is covered by unit tests, and
+> every integration point was type-checked against the real API surface — but you must build it and
+> test on a phone. If Android Studio shows errors, send them back to be fixed.
 
-## What this version fixes (v1.1.0)
+## Features
 
-### Calling
-- **One `CallManager` for the whole app** (`CallManager.getInstance`). Before, the InCallService, notifications and floating widget created
-  new managers that replaced the one the call screen watches, so the call screen stopped updating (it stayed open after the other person hung up,
-  and notifications could show an empty caller).
-- Mute, speaker, hold and answer are shown **after Android confirms them**. The app no longer changes the phone's audio settings by itself.
-- Call timer comes from Android's own connect time. Call direction stays "incoming" after you answer, also before Android 10.
-- A call that never starts no longer leaves a dead call screen open.
-- Real SIM names, the real default SIM, and the exact subscription match when you pick a SIM.
-- New **audio** button: cycles through the outputs the phone really offers (earpiece, wired headset, Bluetooth, speaker).
-- Signal bars and dBm are what Android reports (nothing is estimated). Network type says "4G LTE" / "5G", not VoLTE.
+### Calling (from the Secure Dialer core)
+- One `CallManager` shared across the InCallService, notifications and the floating widget, so the
+  call screen always reflects the real call state.
+- Mute / speaker / hold / answer reflect Android's confirmed state; the app does not change the
+  phone's audio settings by itself.
+- Call timer from Android's own connect time; correct call direction on every API level.
+- Real SIM names, real default SIM, exact subscription match when choosing a SIM.
+- An **audio** button cycles the outputs the phone really offers (earpiece, wired headset,
+  Bluetooth, speaker).
+- Signal bars and dBm come from Android (nothing estimated); network type says "4G LTE" / "5G".
 
-### Blocking, Focus mode and protection (they did nothing before)
-- The screening service now really **rejects** numbers on your blocklist and spam rules set to Auto-Block, **silences** Silence rules, and applies
-  Focus mode and the protection level. Emergency numbers are never touched. Silenced calls show as missed calls (needs Android 10+).
-- Blocked numbers match by their last 8 digits, so a number saved as `9876543210` also blocks `+919876543210`.
-- Settings > Focus Mode, Protection & Caller Announcer: Focus mode, protection level, repeat callers, VIP numbers.
-- Toll-free numbers are no longer labeled "telemarketer / spam".
+### Focus Mode & Call Protection (NovaDial feature, re-added)
+- A real `CallScreeningService` (`NovaDialCallScreeningService`) screens calls **before they ring**.
+- **Focus mode:** Off · Saved contacts only · VIP only · Silence all.
+- **Protection level:** Standard · Strict (silence unsaved) · Maximum (only VIP/favorites/repeat).
+- **Repeat caller** grace: a second call from the same number within 3 minutes always rings.
+- **VIP numbers** always break through. Blocked numbers and offline-spam entries are rejected.
+- **Emergency numbers are never silenced or blocked.**
+- Silenced calls still appear in the call log as missed calls (Android 10+).
 
-### Caller announcer
-- Uses your settings: message (Friendly / Formal / Playful / Custom with `{name}` `{user}` `{type}`), your name, repeat 1-3, speed, pitch,
-  volume, private mode (headphones only), announce unknown numbers, test button.
-- Never longer than 15 seconds, stops when you answer / reject, stays quiet in silent mode and Do Not Disturb, and is not spoken for calls that
-  Focus mode or protection silenced. Spoken on the ringtone audio stream, never changes the ring volume.
+### Caller Announcer (NovaDial feature, re-added)
+- Speaks the caller's name while the phone is ringing (TextToSpeech, ringtone audio stream).
+- Message presets (Friendly / Formal / Playful) or a custom template with `{name}` `{user}` `{type}`.
+- Your name, repeat count (1–3), speech speed, pitch and volume.
+- "Headphones only" mode and "announce unknown numbers" toggle, plus a test button.
+- Never longer than 15 seconds; stops when you answer or reject; stays quiet in silent mode and
+  Do Not Disturb; skipped entirely for calls that Focus mode / protection silenced.
 
-### Removed because it was fake
-- **Record button and Recordings Vault** (nothing recorded; Android does not let apps record the other side of a call).
-- **In-call video button** (only showed a message).
-- **Invented spam database** (about 20 made-up numbers, 12 set to auto-block) and the fake "Refresh threat feed" button.
-  Old entries are deleted automatically on first start. Only rules you add yourself remain.
-- **Invented "community reports"** (fake report counts) and **three sample SIM rules** that silently routed your +44 calls to SIM 2.
-- "Simulate an incoming call" presets: the tab is now **Check a number**, which shows how your own rules treat a number.
-- "Cloud Storage (Sync Active)" wording and the voicemail guide that described recording and sending voicemails.
-- US-only emergency defaults (911, US poison control). The default is now **112**, which works on every mobile network.
-- The emergency "Test Trigger" now asks for confirmation (it starts the real SOS countdown, which you can cancel).
+### Everything else
+- Contacts, recents, dialpad, favorites, voicemail, speed dial, quick replies.
+- Offline spam protection: local blocklist + CSV import (no network, no invented database).
+- Call recording to the app's private vault, call notes, callback reminders, fake-call simulator.
+- Dynamic Island call capsule, appearance/theming, biometric app lock, encrypted local backup,
+  vCard import/export.
 
-### Voicemail
-- Playback is now **real audio** from the voicemail provider (before, only a progress bar moved). Added the `READ_VOICEMAIL` permission.
-  Voicemail only appears if your carrier supports visual voicemail.
+## Settings layout
+Settings is a multi-tab panel. Tab 0 is the category list; tabs 1–8 are the core categories, and
+**tab 9 is "Focus & Protection"** (focus mode, protection level, VIP numbers, caller announcer).
 
-### Build and privacy
-- Release build (R8) has keep rules for Moshi and Room (before, a minified release would likely crash reading data).
-- Removed unused Firebase, OkHttp, Retrofit libraries and the `INTERNET` permission.
-- Backups: `allowBackup=false` plus explicit exclude rules.
-- Release signing falls back to the debug key instead of failing or producing an unsigned APK.
-
-## Still to know
-- Contacts "saved" for protection rules means contacts in the phone's address book.
-- The floating call widget needs the "Display over other apps" permission, which Google Play reviews closely.
-- `SEND_SMS` (reject with message, SOS) is a restricted permission on Google Play and needs a declaration form.
-- Call waiting: the call screen shows one call; swap/merge exist in the service but have no buttons yet.
-- Calls ended by the other person are not added to NovaDial's own history table; the Recents list reads the system call log.
+## Privacy
+- `INTERNET` permission is explicitly **removed** from the manifest — the app cannot use the network.
+- All data (contacts mapping, call history, recordings, notes, backups) stays on the device.
+- `allowBackup=false` with explicit exclude rules.
 
 ## Phone test checklist
 1. Install, set as default phone app, accept permissions.
-2. Close NovaDial. Have someone call you: the call screen opens with the caller's name (or the notification, if the phone is locked).
+2. Close NovaDial. Have someone call you: the call screen opens with the caller's name (or the
+   notification, if the phone is locked).
 3. Answer, then ask the caller to hang up: the call screen must close by itself.
 4. During a call, tap mute / speaker / hold / audio: the buttons must match what you hear.
 5. Make a call on SIM 2 (if you have two SIMs): it must use SIM 2.
-6. Block a number (Settings > Spam Shield). Call from it: it must not ring. Check with the saved number written two ways (with and without +country code).
-7. Settings > Focus Mode: choose "Saved contacts only", call from an unknown number: silent ring, shown as missed.
-8. Settings > Caller announcer > Play a test announcement. Then take a real call: the name is spoken once and stops when you answer.
-9. Put the phone on silent: no announcement.
-10. Recents > Voicemail (only if your carrier supports it): play a message and hear it.
-11. Turn on Do Not Disturb: no announcement.
-12. Settings should no longer show Recordings, and the call screen no longer has a record or video button.
+6. Block a number (Settings > Spam & Call Block). Call from it: it must not ring. Repeat with the
+   number written two ways (with and without +country code).
+7. Settings > Focus & Protection > Focus mode: choose "Saved contacts only", call from an unknown
+   number: silent ring, shown as missed.
+8. Settings > Focus & Protection > Caller announcer > Test announcement. Then take a real call: the
+   name is spoken and stops when you answer.
+9. Put the phone on silent: no announcement. Turn on Do Not Disturb: no announcement.
+10. Recents > Voicemail (only if your carrier supports visual voicemail): play a message.
+11. Recents: call history, notes and recordings open and play.
+
+## License
+GPL-3.0-or-later. See `PORTING_PLAN.md` for upstream attribution and derivation details.

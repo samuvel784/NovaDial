@@ -1,51 +1,105 @@
+/*
+ * Copyright (C) 2026 MovStore
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Default Navy Palette
-val NovaNavyDeep = Color(0xFF070D1E)
-val NovaNavyDark = Color(0xFF0D1B2A)
-val NovaNavyCard = Color(0xFF1B263B)
-val NovaNavyElevated = Color(0xFF243447)
-val NovaBorder = Color(0xFF2E3E55)
+/*
+ * NovaDial "Aurora" design language.
+ *
+ * Identity: a luminous indigo -> violet -> orchid gradient family on deep
+ * indigo-black surfaces. This is NovaDial's own palette and shares no colors
+ * with the Secure Dialer upstream theme (which used a blue/lime base).
+ */
 
-// Accents
-val NovaCyan = Color(0xFF00E5FF)
-val NovaCyanVariant = Color(0xFF00B4D8)
-val NovaEmerald = Color(0xFF10B981)
-val NovaCoral = Color(0xFFFF5252)
-val NovaAmber = Color(0xFFFFB703)
-val NovaPurple = Color(0xFF8B5CF6)
+val White = Color(0xFFFFFFFF)
+val Black = Color(0xFF000000)
 
-// Default Text
-val TextPrimary = Color(0xFFF8FAFC)
-val TextSecondary = Color(0xFF94A3B8)
-val TextMuted = Color(0xFF64748B)
+// ---- Aurora brand anchors -------------------------------------------------
+val AuroraIndigo = Color(0xFF5A4BE0)
+val AuroraViolet = Color(0xFF7C5CFF)
+val AuroraOrchid = Color(0xFFB14BE0)
+val AuroraGlassLight = Color(0xFFEDE9FF)
+val AuroraGlassDark = Color(0xFF181428)
 
-// Day Mode (Light Theme) Palette
-val DayBackground = Color(0xFFF8FAFC)
-val DaySurface = Color(0xFFFFFFFF)
-val DayCard = Color(0xFFFFFFFF)
-val DayElevated = Color(0xFFF1F5F9)
-val DayBorder = Color(0xFFE2E8F0)
-val DayTextPrimary = Color(0xFF0F172A)
-val DayTextSecondary = Color(0xFF475569)
-val DayTextMuted = Color(0xFF94A3B8)
-val DayPrimary = Color(0xFF0284C7)
-val DaySecondary = Color(0xFF059669)
-val DayTertiary = Color(0xFFD97706)
-val DayError = Color(0xFFDC2626)
+// ---- Material 3 tokens (NovaDial Aurora) ----------------------------------
+val PrimaryLight = Color(0xFF5A4BE0)
+val OnPrimaryLight = Color(0xFFFFFFFF)
+val PrimaryContainerLight = Color(0xFFE6E2FF)
+val OnPrimaryContainerLight = Color(0xFF190766)
 
-// Dark Mode (Pitch Black AMOLED) Palette
-val DarkBackground = Color(0xFF000000)
-val DarkSurface = Color(0xFF0D0D0D)
-val DarkCard = Color(0xFF161616)
-val DarkElevated = Color(0xFF222222)
-val DarkBorder = Color(0xFF2C2C2C)
-val DarkTextPrimary = Color(0xFFFFFFFF)
-val DarkTextSecondary = Color(0xFFA1A1AA)
-val DarkTextMuted = Color(0xFF71717A)
-val DarkPrimary = Color(0xFF38BDF8)
-val DarkSecondary = Color(0xFF34D399)
-val DarkTertiary = Color(0xFFFBBF24)
-val DarkError = Color(0xFFF87171)
+val PrimaryDark = Color(0xFFB9AEFF)
+val OnPrimaryDark = Color(0xFF241A66)
+val PrimaryContainerDark = Color(0xFF3B2FA8)
+val OnPrimaryContainerDark = Color(0xFFE6E2FF)
+
+val SecondaryLight = Color(0xFF7C5CFF)
+val OnSecondaryLight = Color(0xFFFFFFFF)
+val SecondaryContainerLight = Color(0xFFECE6FF)
+val OnSecondaryContainerLight = Color(0xFF250C63)
+
+val SecondaryDark = Color(0xFFCBBFFF)
+val OnSecondaryDark = Color(0xFF33207A)
+val SecondaryContainerDark = Color(0xFF4A38C2)
+val OnSecondaryContainerDark = Color(0xFFECE6FF)
+
+val TertiaryLight = Color(0xFFB14BE0)
+val OnTertiaryLight = Color(0xFFFFFFFF)
+val TertiaryContainerLight = Color(0xFFF6E3FF)
+val OnTertiaryContainerLight = Color(0xFF3B0054)
+
+val TertiaryDark = Color(0xFFE6A6FF)
+val OnTertiaryDark = Color(0xFF4A0F63)
+val TertiaryContainerDark = Color(0xFF6E1E93)
+val OnTertiaryContainerDark = Color(0xFFF6E3FF)
+
+val ErrorLight = Color(0xFFBA1A1A)
+val OnErrorLight = Color(0xFFFFFFFF)
+val ErrorContainerLight = Color(0xFFFFDAD6)
+val OnErrorContainerLight = Color(0xFF410002)
+
+val ErrorDark = Color(0xFFFFB4AB)
+val OnErrorDark = Color(0xFF690005)
+val ErrorContainerDark = Color(0xFF93000A)
+val OnErrorContainerDark = Color(0xFFFFDAD6)
+
+// Aurora light surfaces (soft lavender-tinted glass whites)
+val BackgroundLight = Color(0xFFFBFAFF)
+val OnBackgroundLight = Color(0xFF1A1726)
+val SurfaceLight = Color(0xFFFBFAFF)
+val OnSurfaceLight = Color(0xFF1A1726)
+val SurfaceVariantLight = Color(0xFFE9E6F5)
+val OnSurfaceVariantLight = Color(0xFF474459)
+val OutlineLight = Color(0xFF7A7690)
+
+// Aurora dark surfaces (deep indigo-black glass)
+val BackgroundDark = Color(0xFF0B0918)
+val OnBackgroundDark = Color(0xFFEEEAFF)
+val SurfaceDark = Color(0xFF0B0918)
+val OnSurfaceDark = Color(0xFFEEEAFF)
+val SurfaceVariantDark = Color(0xFF211D33)
+val OnSurfaceVariantDark = Color(0xFFC9C4DD)
+val OutlineDark = Color(0xFF928FA6)
+
+// High-contrast avatar color pairs (kept from upstream for contact avatars)
+val AvatarOrange = Color(0xFFFFDBCB)
+val AvatarOrangeText = Color(0xFF311300)
+val AvatarBlue = Color(0xFFD1E4FF)
+val AvatarBlueText = Color(0xFF001D36)
+val AvatarGreen = Color(0xFFD9E7CB)
+val AvatarGreenText = Color(0xFF141E0D)
