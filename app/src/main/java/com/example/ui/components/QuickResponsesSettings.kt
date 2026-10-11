@@ -26,7 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -135,7 +135,7 @@ fun QuickResponsesSettings(
             onValueChange = { newQuickRespInput = it },
             label = { Text(stringResource(R.string.create_custom_reply)) },
             leadingIcon = {
-                Icon(Icons.Default.Message, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.small
@@ -179,7 +179,7 @@ fun QuickResponsesSettings(
 
         if (quickResponses.isEmpty()) {
             SettingsEmptyState(
-                icon = Icons.Default.Message,
+                icon = Icons.AutoMirrored.Filled.Message,
                 title = stringResource(R.string.no_responses_saved_title),
                 description = stringResource(R.string.no_responses_saved_desc),
                 tintColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)

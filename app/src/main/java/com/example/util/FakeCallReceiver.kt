@@ -30,6 +30,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
+import com.example.security.IntentGuard
 
 class FakeCallReceiver : BroadcastReceiver() {
 
@@ -49,6 +50,7 @@ class FakeCallReceiver : BroadcastReceiver() {
                 putExtra("TRIGGER_FAKE_CALL", true)
                 putExtra("FAKE_CALLER_NAME", name)
                 putExtra("FAKE_CALLER_NUMBER", number)
+                putExtra(IntentGuard.EXTRA_GUARD_TOKEN, IntentGuard.token(appContext))
             }
 
             // Android 10+ compliant FullScreenIntent wakes screen legally without deprecated WakeLock hacks
@@ -140,25 +142,13 @@ class FakeCallReceiver : BroadcastReceiver() {
 
                 try {
                     if (canScheduleExact) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                        } else {
-                            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                        }
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                     } else {
                         // FIXED: Wakes phone during Doze mode even if exact alarm permission is denied
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                        } else {
-                            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                        }
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                     }
                 } catch (_: SecurityException) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                    } else {
-                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                    }
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 } catch (_: Exception) {}
             }
         }

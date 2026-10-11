@@ -99,7 +99,7 @@ fun AddContactDialog(
         }
     }
 
-    var selectedAccount by remember(defaultSaveAccount) { mutableStateOf<ContactAccount?>(defaultSaveAccount) }
+    var selectedAccount by remember(defaultSaveAccount) { mutableStateOf(defaultSaveAccount) }
     var accountMenuExpanded by remember { mutableStateOf(false) }
 
     var showEmailField by remember { mutableStateOf(initialEmails.isNotEmpty() || initialEmail.isNotBlank()) }

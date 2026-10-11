@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 

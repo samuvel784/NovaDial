@@ -24,6 +24,7 @@ import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.CancellationSignal
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 
 /**
@@ -32,6 +33,7 @@ import androidx.core.content.ContextCompat
  */
 object VaultBiometricAuthHelper {
 
+    @RequiresApi(Build.VERSION_CODES.P)
     fun authenticate(
         activity: Activity,
         title: String = "Unlock Recording Vault",
@@ -62,35 +64,47 @@ object VaultBiometricAuthHelper {
                     super.onAuthenticationError(errorCode, errString)
                     onError(errString?.toString() ?: "Authentication cancelled")
                 }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                }
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val prompt = BiometricPrompt.Builder(activity)
-                    .setTitle(title)
-                    .setSubtitle(subtitle)
-                    .setAllowedAuthenticators(
-                        BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                    )
-                    .build()
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                    val prompt = BiometricPrompt.Builder(activity)
+                        .setTitle(title)
+                        .setSubtitle(subtitle)
+                        .setAllowedAuthenticators(
+                            BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                        )
+                        .build()
 
-                prompt.authenticate(cancellationSignal, executor, callback)
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                @Suppress("DEPRECATION")
-                val prompt = BiometricPrompt.Builder(activity)
-                    .setTitle(title)
-                    .setSubtitle(subtitle)
-                    .setDeviceCredentialAllowed(true)
-                    .build()
+                    prompt.authenticate(cancellationSignal, executor, callback)
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                    // API 29 (Q) added the device-credential fallback to BiometricPrompt.
+                    @Suppress("DEPRECATION")
+                    val prompt = BiometricPrompt.Builder(activity)
+                        .setTitle(title)
+                        .setSubtitle(subtitle)
+                        .setDeviceCredentialAllowed(true)
+                        .build()
 
-                prompt.authenticate(cancellationSignal, executor, callback)
-            } else {
-                // Pre-Pie devices without native BiometricPrompt API
-                onError("Secure biometric hardware requires Android 9.0 or higher")
+                    prompt.authenticate(cancellationSignal, executor, callback)
+                }
+                else -> {
+                    // API 28 (Pie) has BiometricPrompt but not the device-credential fallback
+                    // (that arrived in Q). Use a biometric-only prompt so we never invoke the
+                    // API 29-only setDeviceCredentialAllowed() on Pie.
+                    @Suppress("DEPRECATION")
+                    val prompt = BiometricPrompt.Builder(activity)
+                        .setTitle(title)
+                        .setSubtitle(subtitle)
+                        .setNegativeButton(activity.getString(android.R.string.cancel), executor) { _, _ ->
+                            onError("Authentication cancelled")
+                        }
+                        .build()
+
+                    prompt.authenticate(cancellationSignal, executor, callback)
+                }
             }
         } catch (e: Exception) {
             // FIXED: NEVER grant access on unexpected hardware or driver exceptions

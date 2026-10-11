@@ -43,38 +43,36 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import androidx.core.content.edit
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class RecordingCompressionProfile(
     val key: String,
     val title: String,
     val description: String,
     val bitRate: Int,
-    val sampleRate: Int,
-    val estMbPerHour: Double
+    val sampleRate: Int
 ) {
     COMPACT(
         key = "COMPACT",
         title = "Compact Voice (High Compression)",
         description = "24 kbps AAC • ~11 MB/hr • Maximum storage savings",
         bitRate = 24000,
-        sampleRate = 16000,
-        estMbPerHour = 10.8
+        sampleRate = 16000
     ),
     BALANCED(
         key = "BALANCED",
         title = "Balanced Standard (Recommended)",
         description = "48 kbps AAC • ~22 MB/hr • Crystal-clear voice clarity",
         bitRate = 48000,
-        sampleRate = 16000,
-        estMbPerHour = 21.6
+        sampleRate = 16000
     ),
     HIGH_FIDELITY(
         key = "HIGH_FIDELITY",
         title = "High Fidelity (Studio)",
         description = "96 kbps AAC @ 44.1 kHz • ~43 MB/hr • Rich acoustic fidelity",
         bitRate = 96000,
-        sampleRate = 44100,
-        estMbPerHour = 43.2
+        sampleRate = 44100
     );
 
     companion object {
@@ -127,7 +125,6 @@ object CallAudioRecorder {
             }
 
             var recorder: MediaRecorder? = null
-            var success = false
 
             val candidateConfigs = listOf(
                 Pair(MediaRecorder.AudioSource.VOICE_COMMUNICATION, profile.sampleRate),
@@ -156,7 +153,6 @@ object CallAudioRecorder {
                         start()
                     }
                     recorder = rec
-                    success = true
                     break
                 } catch (_: Exception) {
                     try { recorder?.release() } catch (_: Exception) {}
@@ -164,19 +160,20 @@ object CallAudioRecorder {
                 }
             }
 
-            if (!success || recorder == null) {
+            val activeRecorder = recorder
+            if (activeRecorder == null) {
                 try { if (outputFile.exists() && outputFile.length() == 0L) outputFile.delete() } catch (_: Exception) {}
                 return false
             }
 
-            mediaRecorder = recorder
+            mediaRecorder = activeRecorder
             currentOutputFile = outputFile
             _isRecording.value = true
             _recordingDuration.value = 0
 
             timerJob = scope.launch {
                 while (isActive) {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     _recordingDuration.value += 1
                 }
             }
@@ -238,9 +235,9 @@ object CallAudioRecorder {
 
     fun setCompressionProfile(context: Context, profile: RecordingCompressionProfile) {
         context.getSharedPreferences("dialer_prefs", Context.MODE_PRIVATE)
-            .edit().putString("recording_compression_profile", profile.key).apply()
+            .edit { putString("recording_compression_profile", profile.key) }
         context.getSharedPreferences("secure_dialer_prefs", Context.MODE_PRIVATE)
-            .edit().putString("recording_compression_profile", profile.key).apply()
+            .edit { putString("recording_compression_profile", profile.key) }
     }
 
     fun cleanupCorruptOrEmptyFiles(context: Context): Int {

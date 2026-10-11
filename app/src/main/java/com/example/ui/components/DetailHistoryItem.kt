@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
-import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -31,8 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +50,7 @@ import com.example.util.RichHapticEngine
 fun DetailHistoryItem(record: CallRecord, onDeleteClick: () -> Unit) {
     val context = LocalContext.current
     val (icon, color) = when (record.type) {
-        CallType.MISSED -> Icons.Default.CallMissed to getMissedCallColor()
+        CallType.MISSED -> Icons.AutoMirrored.Filled.CallMissed to getMissedCallColor()
         CallType.OUTGOING -> Icons.AutoMirrored.Filled.CallMade to getDialedCallColor()
         CallType.INCOMING -> Icons.AutoMirrored.Filled.CallReceived to getReceivedCallColor()
     }

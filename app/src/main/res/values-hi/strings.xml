@@ -18,31 +18,17 @@
     <string name="tab_recents">हाल के कॉल</string>
     <string name="tab_contacts">संपर्क</string>
     <string name="tab_dialpad">डायलपैड</string>
-    <string name="home_greeting_morning">सुप्रभात</string>
-    <string name="home_greeting_afternoon">नमस्कार</string>
-    <string name="home_greeting_evening">शुभ संध्या</string>
-    <string name="home_recent_activity">हाल की गतिविधि</string>
-    <string name="home_no_recent">अभी तक कोई हाल की कॉल नहीं</string>
     <string name="home_call_analytics">कॉल विश्लेषण</string>
     <string name="cat_call_analytics_sub">कुल कॉल, मिस्ड कॉल और कॉल अवधि का विवरण</string>
-    <string name="tab_voicemail">वॉइसमेल</string>
-    <string name="tab_spam_database">स्पैम डेटाबेस</string>
-    <string name="tab_scheduled_reminders">रिमाइंडर</string>
-    <string name="tab_fake_call_sim">फेक कॉल</string>
-    <string name="tab_call_notes">कॉल नोट्स</string>
-    <string name="tab_slot_left">बायां स्लॉट</string>
-    <string name="tab_slot_middle">मध्यम स्लॉट</string>
-    <string name="tab_slot_right">दायां स्लॉट</string>
 
     <!-- Search & General UI -->
     <string name="search_placeholder">संपर्क और नंबर खोजें</string>
-    <string name="search_settings_placeholder">सेटिंग्स खोजें...</string>
+    <string name="search_settings_placeholder">सेटिंग्स खोजें�</string>
     <string name="search_clear">साफ करें</string>
     <string name="search_results_count">खोज परिणाम (%1$d)</string>
     <string name="no_matching_settings">कोई मिलती-जुलती सेटिंग नहीं मिली</string>
     <string name="no_matching_settings_desc">डार्क मोड, सिम, ब्लॉकिंग या रिकॉर्डिंग जैसे शब्दों से खोजें।</string>
     <string name="no_results_title">कोई परिणाम नहीं मिला</string>
-    <string name="no_results_subtitle">कोई मेल खाती कॉल नहीं मिली</string>
     <string name="filter_all">सभी</string>
     <string name="filter_missed">मिस्ड</string>
     <string name="filter_dialed">डायल किए गए</string>
@@ -56,48 +42,34 @@
     <string name="call_log_perm_desc">अपनी कॉल हिस्ट्री देखने और कॉल करने के लिए कृपया कॉल लॉग अनुमति सक्षम करें।</string>
 
     <!-- Contacts Management & Details -->
-    <string name="contacts_header">संपर्क</string>
     <string name="no_contacts_title">कोई संपर्क नहीं मिला</string>
     <string name="no_contacts_subtitle">नया संपर्क बनाने के लिए \'नया जोड़ें\' पर टैप करें</string>
     <string name="action_add_contact">संपर्क जोड़ें</string>
-    <string name="label_name">नाम</string>
     <string name="label_phone_number">फोन नंबर</string>
     <string name="label_first_name">पहला नाम</string>
     <string name="label_last_name">अंतिम नाम</string>
     <string name="label_email">ईमेल</string>
-    <string name="label_type">प्रकार</string>
     <string name="label_mobile">मोबाइल</string>
     <string name="label_home">घर</string>
     <string name="label_work">कार्य</string>
     <string name="label_other">अन्य</string>
-    <string name="label_notes">नोट्स</string>
     <string name="label_address">पता</string>
-    <string name="label_add_number">+ फ़ोन नंबर जोड़ें</string>
-    <string name="label_add_email">+ ईमेल पता जोड़ें</string>
-    <string name="contact_storage_badge_phone">फ़ोन</string>
-    <string name="contact_storage_badge_sim">SIM</string>
-    <string name="contact_storage_badge_google">Google</string>
     <string name="contact_source_select">खाता चुनें</string>
     <string name="contact_source_phone">फोन स्टोरेज</string>
     <string name="contact_source_label">खाते में सहेजें</string>
-    <string name="saved_in_account">%1$s में सहेजा गया</string>
     <string name="add_contact_dialog_title">संपर्क जोड़ें</string>
     <string name="edit_contact_dialog_title">संपर्क संपादित करें</string>
-    <string name="contact_multiple_numbers">%1$d नंबर</string>
     <string name="select_number_to_call">कॉल करने के लिए नंबर चुनें</string>
     <string name="select_number_to_message">संदेश भेजने के लिए नंबर चुनें</string>
     <string name="dialog_call_contact">%1$s को कॉल करें</string>
     <string name="dialog_message_contact">%1$s को संदेश भेजें</string>
 
     <!-- Recents & Call History -->
-    <string name="recents_header">हाल के कॉल</string>
     <string name="no_call_log_title">आपका कॉल लॉग खाली है</string>
     <string name="no_call_log_subtitle">हाल की कॉल यहां दिखाई देंगी</string>
     <string name="clear_call_log_confirm_title">कॉल इतिहास साफ़ करें?</string>
     <string name="clear_call_log_confirm_desc">यह इस डिवाइस और अन्य डायलर से सभी कॉल रिकॉर्ड को स्थायी रूप से हटा देगा। इस क्रिया को पूर्ववत नहीं किया जा सकता है।</string>
     <string name="clear_history_with_number">इस नंबर के साथ इतिहास मिटाएं</string>
-    <string name="delete_call_log_entry">कॉल लॉग प्रविष्टि हटाएं</string>
-    <string name="delete_all_call_history">सभी कॉल इतिहास हटाएं</string>
     <string name="call_type_incoming">इन्कमिंग कॉल</string>
     <string name="call_type_outgoing">आउटगोइंग कॉल</string>
     <string name="call_type_missed">मिस्ड कॉल</string>
@@ -105,7 +77,6 @@
     <string name="recent_label_format">हालिया • %1$s</string>
     <string name="calls_count">%1$d कॉल</string>
     <string name="call_count_label">कॉल की संख्या:</string>
-    <string name="showing_last_5_calls">अंतिम 5 कॉल दिखाए जा रहे हैं</string>
     <string name="call_summary_prefix">%1$s कॉल सारांश</string>
     <string name="today_call_summary">आज का कॉल सारांश</string>
 
@@ -124,7 +95,6 @@
     <!-- In-Call Actions & States -->
     <string name="btn_answer">उत्तर दें</string>
     <string name="btn_decline">अस्वीकार करें</string>
-    <string name="btn_hangup">कॉल काटें</string>
     <string name="btn_swap">बदलें</string>
     <string name="btn_answer_hold">उत्तर दें और होल्ड करें</string>
     <string name="call_status_ongoing">जारी कॉल</string>
@@ -147,9 +117,6 @@
     <string name="action_message">संदेश</string>
     <string name="action_swipe_call">कॉल</string>
     <string name="action_swipe_message">मैसेज</string>
-    <string name="action_copy_number">नंबर कॉपी करें</string>
-    <string name="action_send_email">ईमेल भेजें</string>
-    <string name="action_open_map">मैप्स में खोलें</string>
     <string name="toast_number_copied">नंबर क्लिपबोर्ड पर कॉपी किया गया</string>
     <string name="number_copied">नंबर कॉपी किया गया</string>
     <string name="send_sms">एसएमएस भेजें</string>
@@ -158,12 +125,10 @@
     <string name="call_waiting_title">कॉल वेटिंग</string>
     <string name="call_waiting_notice">उत्तर देने पर आपकी वर्तमान कॉल होल्ड पर चली जाएगी।</string>
     <string name="call_waiting_incoming_from">आने वाली कॉल:</string>
-    <string name="conference">कांफ्रेंस कॉल (%1$d)</string>
     <string name="caller_verified">सत्यापित</string>
     <string name="no_answer">कोई उत्तर नहीं</string>
 
     <!-- Favorites & Voicemail -->
-    <string name="favorites_header">पसंदीदा</string>
     <string name="no_favorites_title">अभी तक कोई पसंदीदा नहीं</string>
     <string name="no_favorites_subtitle">उन्हें आसानी से खोजने के लिए संपर्कों को स्टार दें</string>
     <string name="voicemail_header">वॉइसमेल</string>
@@ -178,7 +143,6 @@
     <string name="cat_calling_accounts">सिम और कॉलिंग खाते</string>
     <string name="cat_speed_dial_quick_responses">स्पीड डायल और त्वरित उत्तर</string>
     <string name="cat_call_blocking">कॉल ब्लॉकिंग और स्पैम</string>
-    <string name="cat_voicemail_tools">वॉयसमेल और रिकॉर्डिंग</string>
     <string name="cat_contacts_data">संपर्क और डेटा</string>
     <string name="cat_advanced_features">उन्नत टूल</string>
     <string name="cat_privacy_security_about">गोपनीयता और ऐप के बारे में</string>
@@ -188,21 +152,15 @@
     <string name="cat_calling_accounts_sub">सिम कार्ड, कॉल वेटिंग और वॉयसमेल</string>
     <string name="cat_speed_dial_quick_responses_sub">स्पीड डायल और एसएमएस त्वरित उत्तर</string>
     <string name="cat_call_blocking_sub">ब्लॉक किए गए नंबर और कॉलर आईडी</string>
-    <string name="cat_voicemail_tools_sub">वॉयसमेल डायरेक्टरी और हाई-क्वालिटी कॉल रिकॉर्डिंग</string>
     <string name="cat_contacts_data_sub">सिंक, आयात और बैकअप</string>
     <string name="cat_advanced_features_sub">कॉल रिकॉर्डिंग, नोट्स, फेक कॉल और रिमाइंडर्स</string>
     <string name="cat_privacy_security_about_sub">ऐप लॉक, सुरक्षा और ऐप जानकारी</string>
     <string name="settings_title">सेटिंग्स</string>
     <string name="settings_back">वापस</string>
-    <string name="settings_info_utilities">जानकारी और उपयोगिताएँ</string>
 
     <!-- Settings Headers -->
     <string name="header_sim_carrier">सिम और कैरियर कॉन्फ़िगरेशन</string>
     <string name="header_incoming_alerts">इनकमिंग कॉल अलर्ट</string>
-    <string name="header_threat_intelligence">खतरा पहचान</string>
-    <string name="header_call_blocker">कॉल ब्लॉकर और फ़िल्टर</string>
-    <string name="header_dialing_shortcuts">डायल शॉर्टकट</string>
-    <string name="header_call_decline_messages">कॉल अस्वीकार संदेश</string>
     <string name="header_carrier_voicemail">कैरियर वॉयसमेल</string>
     <string name="header_contacts_management">संपर्क प्रबंधन</string>
     <string name="header_data_backup">डेटा और बैकअप</string>
@@ -215,7 +173,6 @@
     <!-- Settings - General & Appearance -->
     <string name="settings_carrier_call_settings">कैरियर कॉल सेटिंग्स</string>
     <string name="settings_carrier_call_settings_sub">कॉल वेटिंग, कॉल फॉरवर्डिंग और पूरक सेवाएं</string>
-    <string name="settings_appearance">दिखावट</string>
     <string name="settings_theme_mode">दिखावट मोड</string>
     <string name="settings_theme_mode_sub">डे (सफेद), डिफॉल्ट (नीला) या नाइट (गहरा काला) — पूरे ऐप पर लागू</string>
     <string name="theme_day">डे</string>
@@ -224,30 +181,17 @@
     <string name="theme_default_sub">नीला</string>
     <string name="theme_night">नाइट</string>
     <string name="theme_night_sub">काला</string>
-    <string name="settings_dark_theme">डार्क थीम</string>
-    <string name="settings_dark_theme_sub">इंटरफ़ेस पर डार्क थीम लागू करें</string>
-    <string name="settings_dynamic_color">डायनेमिक रंग</string>
-    <string name="settings_dynamic_color_sub">सिस्टम वॉलपेपर रंग योजना का उपयोग करें (Android 12+)</string>
-    <string name="settings_dynamic_color_sub_fallback">सिस्टम वॉलपेपर रंग (Android 12+ आवश्यक)</string>
     <string name="settings_m3_expressive">मटीरियल 3 एक्सप्रेसिव</string>
     <string name="settings_m3_expressive_sub">जीवंत रंग, अतिरिक्त गोल आकार और डायनामिक स्टाइलिंग</string>
     <string name="settings_accent_color">एक्सेंट रंग</string>
-    <string name="theme_accent_color">थीम एक्सेंट रंग</string>
     <string name="theme_custom_title">कस्टम थीम रंग</string>
     <string name="theme_custom_desc">M3 रंग योजना उत्पन्न करने के लिए कोई भी HEX कोड दर्ज करें (उदा. #FF5722 या #00E676)।</string>
     <string name="theme_hex_code_label">HEX कलर कोड</string>
     <string name="theme_hex_code_chip">HEX कोड</string>
     <string name="theme_apply">थीम लागू करें</string>
-    <string name="settings_pure_black">प्योर AMOLED डार्क मोड</string>
-    <string name="settings_pure_black_sub">OLED बैटरी बचत और उच्च कंट्रास्ट के लिए गहरा काला बैकग्राउंड</string>
-    <string name="settings_pure_black_sub_disabled_dark">OLED बैटरी की अधिकतम बचत के लिए शुद्ध काला #000000 (डार्क थीम सक्षम करता है)</string>
-    <string name="settings_tab_layout">कस्टम टैब लेआउट (बाएं, मध्य, दाएं)</string>
-    <string name="settings_tab_layout_sub">प्रत्येक नेविगेशन स्लॉट में स्क्रीन असाइन करें। चयन स्वचालित रूप से डुप्लिकेट बदलता है।</string>
-    <string name="settings_startup_options">प्रारंभिक विकल्प</string>
     <string name="settings_default_startup_tab">डिफ़ॉल्ट स्टार्टअप टैब</string>
 
     <!-- Settings - Sound, Vibration & Gestures -->
-    <string name="settings_sound_haptics">ध्वनि और कंपन</string>
     <string name="settings_dialpad_tones">डायलपैड टोन</string>
     <string name="settings_dialpad_tones_sub">कुंजियों को डायल करते समय ध्वनि चलाएं</string>
     <string name="settings_vibrate">क्लिक पर कंपन</string>
@@ -259,15 +203,13 @@
     <string name="settings_flash_alerts">कॉल पर फ्लैश अलर्ट</string>
     <string name="settings_flash_alerts_sub">इनकमिंग कॉल पर कैमरा फ्लैश ब्लिंक करता है</string>
     <string name="settings_auto_tune_volume">रिकॉर्डिंग के लिए स्पीकर वॉल्यूम स्वतः ट्यून करें</string>
-    <string name="settings_auto_tune_volume_sub">स्पष्ट आवाज़ रिकॉर्डिंग के लिए कॉल के दौरान स्पीकर वॉल्यूम को स्वतः 55% पर संतुलित करता है।</string>
+    <string name="settings_auto_tune_volume_sub" formatted="false">स्पष्ट आवाज़ रिकॉर्डिंग के लिए कॉल के दौरान स्पीकर वॉल्यूम को स्वतः 55% पर संतुलित करता है।</string>
     <string name="header_theme_styling">थीम और स्टाइलिंग</string>
     <string name="header_sound_haptics">ध्वनि और हैप्टिक्स</string>
 
     <!-- Settings - Calling Accounts, SIM & Telephony -->
-    <string name="settings_calling_features">कॉलिंग विशेषताएं</string>
     <string name="settings_call_waiting">कॉल वेटिंग</string>
     <string name="settings_call_waiting_sub">सक्रिय कॉल के दौरान इनकमिंग कॉल की सूचना दें</string>
-    <string name="settings_sim_voicemail">सिम और वॉइसमेल</string>
     <string name="settings_preferred_sim">पसंदीदा सिम</string>
     <string name="settings_preferred_sim_sub">आउटगोइंग कॉल के लिए सिम कार्ड चुनें</string>
     <string name="sim_1">सिम 1</string>
@@ -306,8 +248,6 @@
     <string name="edit_key">कुंजी %1$d संपादित करें</string>
     <string name="delete_key">कुंजी %1$d हटाएं</string>
     <string name="settings_quick_responses">त्वरित उत्तर</string>
-    <string name="settings_quick_responses_sub">एसएमएस अस्वीकृति टेम्प्लेट संपादित करें</string>
-    <string name="settings_quick_resp_title">त्वरित उत्तर</string>
     <string name="quick_responses">त्वरित उत्तर</string>
     <string name="quick_decline_messages">त्वरित अस्वीकृति संदेश</string>
     <string name="create_custom_reply">कस्टम उत्तर बनाएं</string>
@@ -325,10 +265,8 @@
     <string name="save_voicemail_number">वॉइसमेल नंबर सहेजें</string>
 
     <!-- Settings - Call Blocking, Spam Database & Offline Protection -->
-    <string name="settings_calls_blocking">कॉल और ब्लॉकिंग</string>
     <string name="settings_blocked_numbers">ब्लॉक किए गए नंबर</string>
     <string name="settings_blocked_numbers_sub">प्रतिबंधित आने वाले कॉल प्रबंधित करें</string>
-    <string name="settings_block_list_title">ब्लॉक सूची</string>
     <string name="enter_number_to_block">ब्लॉक करने के लिए नंबर दर्ज करें</string>
     <string name="block_this_number">इस नंबर को ब्लॉक करें</string>
     <string name="blocked_callers_header">ब्लॉक किए गए कॉलर</string>
@@ -340,9 +278,7 @@
     <string name="unblock_number">नंबर अनब्लॉक करें</string>
     <string name="call_blocked_toast">🚫 कॉल ब्लॉक की गई</string>
     <string name="settings_spam_protection">ऑफ़लाइन स्पैम सुरक्षा</string>
-    <string name="settings_spam_protection_sub">CSV ब्लॉकलिस्ट इम्पोर्ट करें और नंबर प्रबंधित करें</string>
     <string name="local_offline_protection">स्थानीय ऑफ़लाइन सुरक्षा</string>
-    <string name="local_offline_protection_sub">शून्य नेटवर्क कॉल। पूरी तरह से ऑफ़लाइन।</string>
     <string name="spam_entries_label">स्पैम प्रविष्टियां</string>
     <string name="spam_numbers_blocked">%1$d नंबर ब्लॉक किए गए</string>
     <string name="add_spam_manually_title">स्पैम नंबर मैन्युअल रूप से जोड़ें</string>
@@ -353,17 +289,6 @@
     <string name="blocklist_empty_desc">स्थानीय रूप से स्पैम ब्लॉक करने के लिए CSV ब्लॉकलिस्ट आयात करें या नंबर जोड़ें।</string>
     <string name="blocked_offline_numbers_title">ऑफ़लाइन ब्लॉक किए गए नंबर</string>
     <string name="btn_clear_all">सभी साफ़ करें</string>
-    <string name="import_csv_dialog_title">CSV ब्लॉकलिस्ट इम्पोर्ट करें</string>
-    <string name="import_csv_dialog_desc">प्रारूप: \'नंबर,लेबल\'। नीचे अपना CSV ब्लॉकलिस्ट पेस्ट करें:</string>
-    <string name="load_sample_dataset">या सैंपल डेटा लोड करें:</string>
-    <string name="btn_load_sample_list">सैंपल लिस्ट लोड करें</string>
-    <string name="spam_csv_placeholder">18005550199,स्पैम टेलीमार्केटर\n18885550122,धोखाधड़ी कॉल</string>
-    <string name="btn_csv_import">CSV इम्पोर्ट</string>
-    <string name="spam_db_check_updates">डेटाबेस अपडेट की जांच करें</string>
-    <string name="spam_db_checking">स्थानीय परिभाषाओं की जांच की जा रही है...</string>
-    <string name="spam_db_up_to_date">ऑफलाइन स्पैम डेटाबेस अद्यतित है</string>
-    <string name="blocklist_file_action_title">फ़ाइल बैकअप और माइग्रेशन</string>
-    <string name="blocklist_file_action_desc">ब्लॉक किए गए कॉलों को .txt/.csv फ़ाइल में एक्सपोर्ट करें या बाहरी ब्लॉकलिस्ट से आयात करें।</string>
     <string name="btn_export_blocklist">ब्लॉकलिस्ट एक्सपोर्ट करें</string>
     <string name="btn_import_blocklist">फ़ाइल आयात करें</string>
     <string name="btn_export_spam_csv">CSV एक्सपोर्ट करें</string>
@@ -372,15 +297,8 @@
     <string name="spam_import_count_success">%1$d स्पैम प्रविष्टियां आयात की गईं!</string>
 
     <!-- Settings - Call Recording Vault, Audio & Compression -->
-    <string name="settings_call_recording">कॉल रिकॉर्डिंग</string>
     <string name="settings_call_recording_sub">कॉल रिकॉर्डिंग नियंत्रण सक्षम करें और स्थानीय रूप से सहेजें</string>
-    <string name="settings_recordings">सहेजी गई रिकॉर्डिंग</string>
-    <string name="settings_recordings_sub">स्थानीय रूप से संग्रहीत कॉल ऑडियो एक्सेस करें</string>
     <string name="settings_recordings_title">रिकॉर्डिंग</string>
-    <string name="settings_view_saved_recordings">सहेजी गई रिकॉर्डिंग देखें</string>
-    <string name="settings_view_saved_recordings_sub">अपनी कॉल रिकॉर्डिंग सुनें और प्रबंधित करें</string>
-    <string name="secure_local_recordings">सुरक्षित स्थानीय रिकॉर्डिंग</string>
-    <string name="recordings_privacy_notice">रिकॉर्डिंग ऐप के निजी डेटाबेस में सुरक्षित रूप से संग्रहीत की जाती हैं।</string>
     <string name="no_recordings_title">कोई रिकॉर्डिंग नहीं मिली</string>
     <string name="no_recordings_desc">कॉल रिकॉर्डिंग सक्षम करें और किसी भी सक्रिय कॉल के दौरान रिकॉर्ड बटन टैप करें।</string>
     <string name="share_recording">शेयर करें</string>
@@ -415,76 +333,30 @@
     <string name="settings_dynamic_island_speaker_only_sub">डायनामिक आइलैंड केवल तब दिखाएं जब स्पीकरफ़ोन सक्रिय हो</string>
     <string name="settings_dynamic_island_floating_permission">फ्लोटिंग ओवरले अनुमति</string>
     <string name="settings_dynamic_island_floating_permission_sub">अन्य ऐप्स के ऊपर कैप्सूल प्रदर्शित करने की अनुमति दें</string>
-    <string name="dynamic_island_speaker_on">स्पीकर चालू</string>
     <string name="dynamic_island_muted">म्यूट</string>
-    <string name="dynamic_island_recording">रिकॉर्ड</string>
-    <string name="dynamic_island_tap_to_expand">कॉल नियंत्रण खोलने के लिए टैप करें</string>
 
     <!-- Settings - Contacts, Deduplication & Storage -->
-    <string name="settings_contact_preferences">संपर्क प्राथमिकताएं</string>
     <string name="settings_contacts_to_display">प्रदर्शित करने के लिए संपर्क</string>
-    <string name="settings_contacts_to_display_sub">खाता स्रोत (जैसे गूगल, फोन, सिम) द्वारा फ़िल्टर करें</string>
     <string name="settings_default_account_for_new">नए संपर्कों के लिए डिफ़ॉल्ट खाता</string>
-    <string name="settings_default_account_for_new_sub">नए संपर्क बनाते समय पूर्व-चयनित खाता</string>
-    <string name="settings_dedup">डीडुप्लीकेशन टूल</string>
-    <string name="settings_dedup_sub">डुप्लिकेट संपर्कों को स्वचालित रूप से मर्ज करें</string>
-    <string name="settings_dedup_title">डीडुप्लीकेशन</string>
-    <string name="dedup_desc">सिस्टम एक ही नंबर वाले डुप्लिकेट प्रविष्टियों को तुरंत मर्ज करने के लिए आपके स्थानीय डेटाबेस को स्कैन करता है।</string>
-    <string name="no_duplicates_title">कोई डुप्लिकेट नहीं मिला</string>
-    <string name="no_duplicates_desc">आपकी संपर्क सूची पूरी तरह से साफ़ है! कोई डुप्लिकेट नंबर नहीं मिला।</string>
-    <string name="merge_all_duplicates">सभी मिले डुप्लिकेट मर्ज करें (%1$d समूह)</string>
-    <string name="merge_group">समूह मर्ज करें</string>
     <string name="btn_add_merge">जोड़ें और मर्ज करें</string>
-    <string name="toast_merged_all_duplicates">सभी डुप्लिकेट सफलतापूर्वक मर्ज किए गए</string>
-    <string name="toast_merged_duplicates_for">%1$s के लिए डुप्लिकेट मर्ज किए गए</string>
-    <string name="settings_merge_duplicate_contacts">डुप्लिकेट संपर्क मर्ज करें</string>
-    <string name="settings_merge_duplicate_contacts_sub">डुप्लिकेट संपर्क प्रविष्टियों को स्कैन और साफ़ करें</string>
 
     <!-- Settings - Backup, Restore & Encrypted Migration -->
-    <string name="settings_data_utilities">डेटा और उपयोगिताएँ</string>
     <string name="settings_backup_restore_sub">एनक्रिप्टेड JSON फ़ाइल से कॉल लॉग और सेटिंग्स पुनर्स्थापित करें</string>
-    <string name="backup_service_health_title">बैकअप और सेवा स्वास्थ्य</string>
-    <string name="backup_service_health_sub">एनक्रिप्टेड स्थानीय JSON बैकअप, रीस्टोर और वॉचडॉग स्थिति</string>
-    <string name="service_health_header">कॉल ब्लॉकर सेवा स्वास्थ्य</string>
-    <string name="service_health_active">सक्रिय और सुरक्षित</string>
-    <string name="service_health_action_req">कार्रवाई आवश्यक / भूमिका गायब</string>
-    <string name="service_health_role_granted">स्क्रीनिंग भूमिका: स्वीकृत</string>
-    <string name="service_health_role_not_granted">स्क्रीनिंग भूमिका: स्वीकृत नहीं</string>
     <string name="backup_export_title">एनक्रिप्टेड स्थानीय बैकअप</string>
     <string name="backup_export_desc">ब्लॉकलिस्ट, कॉल नोट्स, स्पीड डायल और त्वरित प्रतिक्रियाओं को एनक्रिप्टेड AES-256 JSON बैकअप स्ट्रिंग में एक्सपोर्ट करें।</string>
     <string name="backup_export_password_label">एनक्रिप्शन पासवर्ड (वैकल्पिक)</string>
-    <string name="backup_export_btn">एनक्रिप्टेड बैकअप एक्सपोर्ट करें</string>
-    <string name="backup_restore_title">बैकअप से रीस्टोर करें</string>
     <string name="backup_restore_desc">पहले से एक्सपोर्ट की गई बैकअप स्ट्रिंग से ब्लॉकलिस्ट, नोट्स और प्राथमिकताओं को रीस्टोर करें।</string>
-    <string name="backup_import_btn">बैकअप स्ट्रिंग इम्पोर्ट करें</string>
-    <string name="backup_exported_dialog_title">बैकअप सफलतापूर्वक एक्सपोर्ट किया गया</string>
-    <string name="backup_exported_dialog_desc">नीचे आपकी बैकअप डेटा स्ट्रिंग है। इसे कॉपी करें और सुरक्षित रूप से स्टोर करें:</string>
-    <string name="backup_copy_clipboard">क्लिपबोर्ड पर कॉपी करें</string>
-    <string name="backup_import_dialog_title">बैकअप इम्पोर्ट करें</string>
-    <string name="backup_import_dialog_desc">नीचे अपनी बैकअप JSON या एनक्रिप्टेड स्ट्रिंग पेस्ट करें:</string>
-    <string name="backup_string_label">बैकअप स्ट्रिंग</string>
     <string name="backup_password_label">पासवर्ड (यदि एनक्रिप्टेड है)</string>
     <string name="backup_restore_btn">रीस्टोर करें</string>
     <string name="backup_restored_success_toast">बैकअप सफलतापूर्वक रीस्टोर किया गया!</string>
     <string name="backup_restore_failed_toast">बैकअप रीस्टोर करने में विफल। पासवर्ड या डेटा स्ट्रिंग की जांच करें।</string>
-    <string name="backup_copied_toast">बैकअप स्ट्रिंग क्लिपबोर्ड पर कॉपी की गई!</string>
     <string name="vcf_migration_title">vCard (VCF) संपर्क माइग्रेशन</string>
     <string name="vcf_migration_desc">vCard (.vcf) फ़ाइल का उपयोग करके संपर्क एक्सपोर्ट/इम्पोर्ट करें।</string>
-    <string name="btn_export_vcf">VCF एक्सपोर्ट</string>
-    <string name="btn_import_vcf">VCF इम्पोर्ट</string>
-    <string name="vcf_exported_title">vCard संपर्क एक्सपोर्ट हुए</string>
-    <string name="vcf_exported_desc">आपके संपर्क vCard प्रारूप में एक्सपोर्ट किए गए हैं।</string>
-    <string name="vcf_import_title">vCard से संपर्क इम्पोर्ट करें</string>
-    <string name="vcf_import_desc">संपर्क इम्पोर्ट करने के लिए vCard सामग्री पेस्ट करें।</string>
-    <string name="vcf_content_label">vCard (VCF) सामग्री</string>
-    <string name="btn_import_contacts">संपर्क इम्पोर्ट करें</string>
     <string name="header_contacts_import_export">संपर्क आयात और एक्सपोर्ट</string>
     <string name="settings_export_contacts_vcard">संपर्क एक्सपोर्ट करें (vCard)</string>
     <string name="settings_import_contacts_vcard">संपर्क आयात करें (vCard)</string>
     <string name="settings_import_contacts_vcard_sub">मानक .vcf कार्ड फ़ाइल से संपर्क पुनर्स्थापित करें</string>
     <string name="vcf_import_count_success">संपर्क सफलतापूर्वक आयात किए गए!</string>
-    <string name="btn_save_file">फ़ाइल में सहेजें</string>
-    <string name="btn_open_file">फ़ाइल चुनें</string>
     <string name="btn_save_backup_file">बैकअप फ़ाइल सहेजें</string>
     <string name="btn_restore_backup_file">फ़ाइल से पुनर्स्थापित करें</string>
     <string name="btn_save_vcf_file">.VCF फ़ाइल सहेजें</string>
@@ -494,18 +366,12 @@
     <string name="file_read_failed">चयनित फ़ाइल पढ़ने में विफल</string>
 
     <!-- Settings - Security, Biometrics, PIN & App Lock -->
-    <string name="settings_security_protection">सुरक्षा और संरक्षण</string>
     <string name="settings_biometric_lock">ऐप लॉक</string>
     <string name="settings_biometric_lock_sub">ऐप खोलने के लिए डिवाइस लॉक (PIN/पैटर्न/बायोमेट्रिक) आवश्यक है</string>
     <string name="settings_pocket_protection">पॉकेट टच प्रोटेक्शन</string>
     <string name="settings_pocket_protection_sub">जेब में कॉल के दौरान अनपेक्षित टच ब्लॉक करता है</string>
     <string name="pocket_lock_active">पॉकेट लॉक सक्रिय</string>
     <string name="pocket_lock_desc">अनलॉक करने के लिए प्रॉक्सिमिटी सेंसर को खुला रखें</string>
-    <string name="app_locked_title">सिक्योर डायलर लॉक है</string>
-    <string name="app_locked_desc">आपकी गोपनीयता की सुरक्षा के लिए यह ऐप सुरक्षित है। जारी रखने के लिए अपने डिवाइस लॉक से प्रमाणित करें।</string>
-    <string name="btn_unlock_dialer">डायलर अनलॉक करें</string>
-    <string name="device_auth_title">सिक्योर डायलर</string>
-    <string name="device_auth_subtitle">सिक्योर डायलर खोलने के लिए प्रमाणित करें</string>
     <string name="restricted_settings_title">प्रतिबंधित सेटिंग्स</string>
     <string name="restricted_settings_desc">डिफ़ॉल्ट डायलर के रूप में उपयोग करने के लिए सिस्टम सेटिंग्स में इसे सक्षम करें।</string>
     <string name="btn_open_settings">सेटिंग्स खोलें</string>
@@ -517,19 +383,15 @@
     <string name="no_matching_calls_for">\"%1$s\" के लिए कोई मेल खाती कॉल नहीं</string>
     <string name="summary_missed_and_time">मिस कॉल: %1$d • समय: %2$s</string>
     <string name="summary_range_today">आज</string>
-    <string name="summary_range_this_week">इस सप्ताह</string>
-    <string name="summary_range_this_month">इस महीने</string>
-    <string name="summary_range_this_year">इस साल</string>
-    <string name="summary_range_total">कुल</string>
     <string name="total_talk_time">कुल बात करने का समय</string>
+    <string name="summary_chart_distribution">कॉल वितरण</string>
+    <string name="summary_chart_activity">पिछले 7 दिन</string>
+    <string name="summary_avg_duration">औसत अवधि</string>
+    <string name="summary_busiest_day">सबसे व्यस्त दिन</string>
     <string name="summary_range_week_tab">सप्ताह</string>
     <string name="summary_range_month_tab">महीना</string>
     <string name="summary_range_year_tab">वर्ष</string>
     <string name="summary_range_all_tab">सभी</string>
-    <string name="settings_dashboard_style">कॉल लॉग डैशबोर्ड शैली</string>
-    <string name="settings_dashboard_style_sub">पूरे आंकड़े डैशबोर्ड या केवल कॉम्पैक्ट फ़िल्टर बार में से चुनें</string>
-    <string name="settings_call_log_dashboard">कॉल लॉग सारांश डैशबोर्ड</string>
-    <string name="settings_call_log_dashboard_sub">हाल की कॉलों के लिए आंकड़े और बात करने का समय दिखाएं</string>
     <string name="settings_call_log_filters">कॉल लॉग त्वरित फ़िल्टर</string>
     <string name="settings_call_log_filters_sub">कॉल लॉग के ऊपर त्वरित फ़िल्टर चिप्स दिखाएं</string>
     <string name="settings_all_call_notes">कॉल नोट्स</string>
@@ -537,10 +399,7 @@
     <string name="no_notes_title">कोई कॉल नोट नहीं</string>
     <string name="no_notes_desc">कॉल के दौरान जोड़े गए नोट्स यहां दिखाई देंगे</string>
     <string name="search_notes_placeholder">नोट्स या नंबर खोजें...</string>
-    <string name="edit_note_title">कॉल नोट संपादित करें</string>
-    <string name="delete_note_confirm">%1$s के लिए कॉल नोट हटाएं?</string>
     <string name="note_deleted_toast">कॉल नोट हटा दिया गया</string>
-    <string name="call_note_card_title">कॉल नोट</string>
     <string name="add_call_note_btn">कॉल नोट जोड़ें</string>
     <string name="call_notes_count_title">कॉल नोट्स (%1$d)</string>
     <string name="call_notes_count_badge">%1$d नोट्स</string>
@@ -549,13 +408,10 @@
     <string name="note_saved">नोट सुरक्षित रूप से सहेजा गया</string>
     <string name="note_placeholder">महत्वपूर्ण विवरण दर्ज करें...</string>
     <string name="btn_save_note">नोट सहेजें</string>
-    <string name="header_productivity_notes">उत्पादकता और नोट्स</string>
 
     <!-- Settings - Fake Call Simulator & Reminders -->
     <string name="settings_fake_call_sim">फेक कॉल सिमुलेटर</string>
     <string name="settings_fake_call_sim_sub">असहज स्थितियों से बचने के लिए फेक कॉल शेड्यूल करें</string>
-    <string name="fake_call_sim_title">फेक कॉल सिमुलेटर</string>
-    <string name="fake_call_sim_explanation">चयनित टाइमर के बाद एक सिम्युलेटेड इनकमिंग कॉल स्क्रीन ट्रिगर होगी।</string>
     <string name="caller_identity">कॉलर पहचान</string>
     <string name="caller_name_label">कॉलर का नाम</string>
     <string name="trigger_delay_timer">ट्रिगर देरी टाइमर</string>
@@ -567,10 +423,6 @@
     <string name="schedule_sequential_calls">%1$d क्रमिक कॉल शेड्यूल करें</string>
     <string name="schedule_escape_call">फेक कॉल शेड्यूल करें (%1$d सेकंड)</string>
     <string name="btn_cancel_scheduled_escape_calls">निर्धारित फेक कॉल रद्द करें</string>
-    <string name="unit_sec">सेकंड</string>
-    <string name="unit_min">मिनट</string>
-    <string name="unit_hour">घंटा</string>
-    <string name="unit_day">दिन</string>
     <string name="callback_reminders_title">कॉलबैक रिमाइंडर</string>
     <string name="callback_reminders_stats">%1$d सक्रिय, %2$d पूर्ण</string>
     <string name="active_reminders_title">सक्रिय रिमाइंडर</string>
@@ -592,14 +444,10 @@
     <string name="btn_configure">कॉन्फ़िगर करें</string>
     <string name="btn_set_default">डिफ़ॉल्ट सेट करें</string>
     <string name="status_granted">स्वीकृत</string>
-    <string name="status_enabled">सक्षम</string>
     <string name="settings_lockscreen_calling_title">लॉक स्क्रीन पर फ़ुल-स्क्रीन कॉल</string>
     <string name="settings_lockscreen_calling_sub">डिवाइस लॉक होने या स्क्रीन बंद होने पर तुरंत इनकमिंग कॉल स्क्रीन दिखाएं</string>
     <string name="settings_full_screen_intent_warning">फुल-स्क्रीन इनकमिंग कॉल अलर्ट सिस्टम द्वारा प्रतिबंधित हैं</string>
     <string name="settings_overlay_permission_warning">डायनामिक आइलैंड को अन्य ऐप्स के ऊपर दिखाने के लिए ओवरले अनुमति आवश्यक है</string>
-    <string name="settings_all_call_permissions_good">सभी कॉलिंग और लॉक स्क्रीन सुविधाएं पूरी तरह से कॉन्फ़िगर हैं</string>
-    <string name="state_enabled">सक्षम</string>
-    <string name="state_disabled">अक्षम</string>
     <string name="feature_enable_prompt">सक्रिय करने के लिए ऊपर स्विच चालू करें</string>
     <string name="feature_disabled_hint">सुविधा अक्षम है</string>
     <string name="btn_enable_feature">सुविधा सक्षम करें</string>
@@ -610,33 +458,16 @@
     <string name="settings_about_sub">संस्करण जानकारी और लाइसेंस</string>
     <string name="settings_privacy">गोपनीयता नीति</string>
     <string name="settings_privacy_sub">शून्य डेटा संग्रह नोटिस</string>
-    <string name="settings_about_privacy">हमारे बारे में और गोपनीयता</string>
-    <string name="about_mission_title">हमारा मिशन</string>
     <string name="about_mission_desc">उपयोगकर्ता की गोपनीयता से समझौता किए बिना एक सरल, विश्वसनीय और सुरक्षित डायलर अनुभव प्रदान करना।</string>
     <string name="about_app_desc">NovaDial एक गोपनीयता-केंद्रित संचार उपकरण है। सभी कार्य विशेष रूप से आपके डिवाइस पर होते हैं।</string>
     <string name="privacy_policy_title">गोपनीयता नीति</string>
     <string name="privacy_intro">NovaDial में, हम आपकी गोपनीयता को प्राथमिकता देते हैं।</string>
-    <string name="privacy_section_1_title">1. स्थानीय डेटा प्रसंस्करण</string>
     <string name="privacy_section_1_desc">आपके संपर्क और कॉल लॉग कभी भी हमारे सर्वर पर प्रेषित नहीं होते हैं।</string>
-    <string name="privacy_section_2_title">2. डेटा उपयोग</string>
     <string name="privacy_section_2_desc">जानकारी का उपयोग केवल कोर डायलर कार्यों के लिए किया जाता है।</string>
-    <string name="privacy_section_3_title">3. डेटा साझाकरण</string>
     <string name="privacy_section_3_desc">हम आपका डेटा किसी तीसरे पक्ष के साथ साझा नहीं करते हैं।</string>
-    <string name="settings_check_updates">अपडेट के लिए जांचें</string>
-    <string name="settings_check_updates_sub">सुनिश्चित करें कि ऐप अद्यतित और सुरक्षित है</string>
-    <string name="check_updates_desc">आधिकारिक F-Droid से सीधे NovaDial की जांच और अपडेट करें।</string>
-    <string name="checking_mirrors">सुरक्षित सर्वर जांच रहे हैं...</string>
-    <string name="app_up_to_date_desc">आप NovaDial के नवीनतम आधिकारिक बिल्ड का उपयोग कर रहे हैं।</string>
-    <string name="check_for_updates_now">अब अपडेट की जांच करें</string>
-    <string name="up_to_date_result">NovaDial अद्यतित है!\nसंस्करण v1.5.0</string>
-    <string name="settings_app_updates">इन-ऐप अपडेट</string>
-    <string name="settings_app_updates_sub">संस्करण स्थिति जांचें</string>
-    <string name="settings_updates_title">अपडेट</string>
-    <string name="settings_contribution">योगदान</string>
     <string name="settings_support_title">NovaDial का समर्थन करें</string>
     <string name="settings_support_desc" formatted="false">NovaDial 100% मुफ़्त, ओपन-सोर्स और विज्ञापन-मुक्त है। यदि यह ऐप उपयोगी लगे, तो योगदान पर विचार करें।</string>
     <string name="settings_contribute_github">GitHub पर योगदान करें</string>
-    <string name="app_version_name">संस्करण 1.5.0</string>
 
     <!-- General Buttons, Common Utilities & Common Dialogs -->
     <string name="btn_cancel">रद्द करें</string>
@@ -644,7 +475,6 @@
     <string name="btn_delete">हटाएं</string>
     <string name="btn_edit">संपादित करें</string>
     <string name="btn_discard">हटाएं</string>
-    <string name="btn_import">इम्पोर्ट</string>
     <string name="delete">हटाएं</string>
     <!-- Duplicate Finder -->
     <string name="dup_finder_title">डुप्लिकेट खोजक</string>
@@ -667,15 +497,14 @@
     <string name="dup_delete_one_confirm_desc">यह संपर्क स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।</string>
     <string name="dup_merged">%1$d संपर्क मर्ज किए गए</string>
     <string name="dup_deleted">%1$d संपर्क हटाए गए</string>
-    <string name="edit">संपादित करें</string>
+    <string name="dup_merge_all">सभी मर्ज करें</string>
+    <string name="dup_delete_all">सभी हटाएँ</string>
+    <string name="dup_merge_all_confirm_desc">हर डुप्लिकेट समूह को मर्ज किया जाएगा और हर समूह में चयनित संपर्क रखा जाएगा। यह स्थायी रूप से सहेजा जाता है।</string>
+    <string name="dup_delete_all_confirm_desc">हर समूह के सभी बिना चयनित डुप्लिकेट स्थायी रूप से हटा दिए जाएंगे। इसे पूर्ववत नहीं किया जा सकता।</string>
     <string name="close">बंद करें</string>
-    <string name="add">जोड़ें</string>
-    <string name="add_new_contact">नया जोड़ें</string>
     <string name="add_call">कॉल जोड़ें</string>
     <string name="add_call_search_hint">संपर्क खोजें या नंबर दर्ज करें</string>
-    <string name="filter_all_contacts">सभी संपर्क</string>
     <string name="account_filter_all">सभी खाते</string>
-    <string name="not_set">सेट नहीं है</string>
     <string name="on_hold_prefix">होल्ड पर:</string>
     <string name="warning">चेतावनी</string>
     <string name="error_open_messages">संदेश नहीं खोले जा सके</string>
@@ -740,6 +569,11 @@
     <string name="announcer_headphones_sub">जब कोई हेडफ़ोन या ब्लूटूथ डिवाइस कनेक्ट न हो तो शांत रहें।</string>
     <string name="announcer_test_title">अनाउंसमेंट टेस्ट</string>
     <string name="announcer_test_sub">अपनी वर्तमान सेटिंग्स का उपयोग करके एक नमूना चलाएं</string>
+    <string name="announcer_voice_title">आवाज़</string>
+    <string name="announcer_voice_default">डिफ़ॉल्ट</string>
+    <string name="announcer_voice_male">पुरुष</string>
+    <string name="announcer_voice_female">महिला</string>
+    <string name="announcer_voice_note">आपके डिवाइस की टेक्स्ट-टू-स्पीच आवाज़ का उपयोग करता है। परिणाम फ़ोन में इंस्टॉल वॉइस इंजन पर निर्भर करता है।</string>
 <string name="dialpad_matches_title">Quick matches</string>
     <string name="dialpad_matches_hint">Tap a match to call</string>
 
@@ -792,10 +626,48 @@
     <string name="quick_reply_direct_sms_title">Send as SMS</string>
     <string name="quick_reply_direct_sms_sub">Send decline messages directly as text messages using SEND_SMS permission</string>
     <string name="sms_permission_required">SMS permission needed to send quick replies as text</string>
-    <string name="sms_sent_toast">Message sent</string>
 
     <string name="widget_favorites_title">NovaDial Favourites</string>
     <string name="widget_tap_hint">Tap a favourite to call</string>
     <string name="widget_no_favourites">No favourites yet - open NovaDial to add some</string>
     <string name="ringtone_pick">Ringtone</string>
+    <!-- Emergency SOS -->
+    <string name="sos_title">आपातकालीन SOS</string>
+    <string name="sos_sub">अपनी लोकेशन के साथ आपातकालीन अलर्ट भेजें और आपातकालीन सेवाओं को कॉल करें</string>
+    <string name="sos_instructions_title">यह कैसे काम करता है</string>
+    <string name="sos_instructions_body">1. नीचे एक या अधिक आपातकालीन संपर्क जोड़ें।\n2. SOS बटन को दबाकर रखें।\n3. NovaDial उन संपर्कों को आपकी लोकेशन भेजता है और आपके आपातकालीन नंबर पर कॉल करता है।</string>
+    <string name="sos_button_label">SOS</string>
+    <string name="sos_hold_hint">सक्रिय करने के लिए दबाकर रखें</string>
+    <string name="sos_contacts_title">आपातकालीन संपर्क</string>
+    <string name="sos_contact_add">आपातकालीन संपर्क जोड़ें</string>
+    <string name="sos_contacts_empty">अभी कोई आपातकालीन संपर्क नहीं</string>
+    <string name="sos_contact_name">नाम</string>
+    <string name="sos_contact_number">फ़ोन नंबर</string>
+    <string name="sos_auto_alert_title">संपर्कों को स्वतः सूचित करें</string>
+    <string name="sos_auto_alert_sub">SOS सक्रिय होने पर आपके सहेजे गए आपातकालीन संपर्कों को संदेश भेजता है</string>
+    <string name="sos_include_location_title">मेरी लोकेशन शामिल करें</string>
+    <string name="sos_include_location_sub">अलर्ट में आपकी GPS स्थिति के साथ मैप लिंक जोड़ता है</string>
+    <string name="sos_call_number_title">कॉल करने के लिए आपातकालीन नंबर</string>
+    <string name="sos_call_number_sub">SOS सक्रिय होने पर डायल किया जाने वाला नंबर (जैसे 112)</string>
+    <string name="sos_grant_permissions">आवश्यक अनुमतियाँ दें</string>
+    <string name="sos_permissions_needed">पूर्ण अलर्ट के लिए SMS और लोकेशन अनुमतियाँ आवश्यक हैं</string>
+    <string name="sos_permissions_ok">अनुमतियाँ दी गईं</string>
+    <string name="sos_sent_toast">SOS अलर्ट %1$d संपर्क को भेजा गया</string>
+    <string name="sos_no_contacts_toast">पहले कम से कम एक आपातकालीन संपर्क जोड़ें</string>
+    <string name="sos_test_alert">परीक्षण अलर्ट भेजें</string>
+    <string name="sos_alert_message">आपातकाल - मुझे मदद चाहिए। यह NovaDial से एक स्वचालित SOS अलर्ट है।</string>
+    <string name="sos_alert_location_label">मेरी लोकेशन:</string>
+    <string name="sos_no_location">लोकेशन उपलब्ध नहीं - मैप लिंक के लिए GPS चालू करें</string>
+    <string name="sos_custom_message_title">Custom alert message</string>
+    <string name="sos_custom_message_hint">Leave blank to use the default message</string>
+    <string name="sos_countdown_title">Emergency SOS</string>
+    <string name="sos_countdown_body">Sending your alert and calling in %1$d seconds.\nTap Cancel to stop.</string>
+    <string name="sos_countdown_now">Send now</string>
+    <string name="sos_countdown_setting">Countdown before sending</string>
+    <string name="sos_countdown_setting_sub">Seconds to cancel an accidental SOS (0 sends immediately)</string>
+    <string name="sos_shake_title">Shake to trigger SOS</string>
+    <string name="sos_shake_sub">Shake the phone firmly to start the SOS countdown. Runs in the background.</string>
+    <string name="sos_shake_service_title">Shake to SOS is on</string>
+    <string name="sos_shake_service_text">Shake your phone firmly to start the emergency countdown</string>
+    <string name="sos_power_note">Note: Android does not let third-party apps detect a triple-press of the power button. Use the shake gesture or the button above instead.</string>
 </resources>

@@ -17,11 +17,6 @@
 
 package com.example.ui.components
 
-import android.app.role.RoleManager
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.telecom.TelecomManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.PhoneCallback
+import androidx.compose.material.icons.automirrored.filled.PhoneForwarded
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -145,7 +144,7 @@ fun GeneralSettings(
             SettingsSearchItem("Accent Color Palette", "Select custom accent color palette for buttons, sliders & highlights", "Appearance", 1, Icons.Default.Brush),
 
             // 2. SOUND & GESTURES
-            SettingsSearchItem("Sound & Gestures Settings", "Keypad tones, vibration & gestures", "Sound & Gestures", 2, Icons.Default.VolumeUp),
+            SettingsSearchItem("Sound & Gestures Settings", "Keypad tones, vibration & gestures", "Sound & Gestures", 2, Icons.AutoMirrored.Filled.VolumeUp),
             SettingsSearchItem("Dialpad Keypad Tones", "Enable or disable DTMF keypad sounds when dialing numbers", "Sound & Gestures", 2, Icons.Default.Dialpad),
             SettingsSearchItem("Call Vibration & Haptics", "Configure call vibration, connection feedback & touch haptics", "Sound & Gestures", 2, Icons.Default.Vibration),
             SettingsSearchItem("Default Startup Tab & Home Layout", "Choose whether app opens to Recents, Contacts, or Dialpad layout", "Sound & Gestures", 2, Icons.Default.Home),
@@ -154,8 +153,8 @@ fun GeneralSettings(
             // 3. SIM & CALLING
             SettingsSearchItem("SIM & Calling Accounts", "Dual SIM cards, call waiting, forwarding & voicemail", "SIM & Calling", 3, Icons.Default.SimCard),
             SettingsSearchItem("Preferred SIM Card", "Set default SIM for outgoing calls in dual SIM devices", "SIM & Calling", 3, Icons.Default.SimCard),
-            SettingsSearchItem("Call Waiting", "Receive notifications for incoming calls while on an active call", "SIM & Calling", 3, Icons.Default.PhoneCallback),
-            SettingsSearchItem("Call Forwarding", "Forward incoming calls to another phone number", "SIM & Calling", 3, Icons.Default.PhoneForwarded),
+            SettingsSearchItem("Call Waiting", "Receive notifications for incoming calls while on an active call", "SIM & Calling", 3, Icons.AutoMirrored.Filled.PhoneCallback),
+            SettingsSearchItem("Call Forwarding", "Forward incoming calls to another phone number", "SIM & Calling", 3, Icons.AutoMirrored.Filled.PhoneForwarded),
             SettingsSearchItem("Carrier Voicemail Setup", "Configure carrier voicemail number and quick dial action", "SIM & Calling", 3, Icons.Default.Voicemail),
             SettingsSearchItem("Hide Caller ID (CLIR)", "Suppress outgoing number so recipient sees Private or Unknown Caller", "SIM & Calling", 3, Icons.Default.VisibilityOff),
             SettingsSearchItem("Caller ID Prefix & Codes", "Select carrier CLIR prefix: #31#, *67, 141, 1831 or custom dial code", "SIM & Calling", 3, Icons.Default.Pin),
@@ -193,7 +192,7 @@ fun GeneralSettings(
             SettingsSearchItem("Biometric App Lock", "Require fingerprint or PIN lock to open dialer application", "Privacy & About", 8, Icons.Default.Fingerprint),
             SettingsSearchItem("Pocket Protection Mode", "Prevent accidental pocket touches using proximity sensor", "Privacy & About", 8, Icons.Default.PhonelinkLock),
             SettingsSearchItem("App Version & Device Specifications", "View application version, build numbers, and system permissions", "Privacy & About", 8, Icons.Default.Info),
-            SettingsSearchItem("Help & Customer Support", "Send feedback or contact developer support", "Privacy & About", 8, Icons.Default.Help),
+            SettingsSearchItem("Help & Customer Support", "Send feedback or contact developer support", "Privacy & About", 8, Icons.AutoMirrored.Filled.Help),
 
             // 9. FOCUS & PROTECTION
             SettingsSearchItem("Focus Mode & Call Protection Settings", "Priority ringing rules, VIP callers, and caller announcements", "Focus & Protection", 9, Icons.Default.DoNotDisturbOn),
@@ -203,7 +202,13 @@ fun GeneralSettings(
             SettingsSearchItem("Caller Announcer (Speak Caller Name)", "Read the caller's name aloud while the phone is ringing", "Focus & Protection", 9, Icons.Default.Campaign),
             SettingsSearchItem("Contact Ringtones & Vibration", "Assign per-contact ringtones and vibration patterns for Fake Call", "Focus & Protection", 12, Icons.Default.MusicNote),
             SettingsSearchItem("Per-Contact Ringtone", "Choose a custom ringtone for a specific caller number", "Focus & Protection", 12, Icons.Default.MusicNote),
-            SettingsSearchItem("Vibration Patterns", "Set a bespoke vibration pattern (heartbeat, SOS, staccato) per contact", "Focus & Protection", 12, Icons.Default.Vibration)
+            SettingsSearchItem("Vibration Patterns", "Set a bespoke vibration pattern (heartbeat, SOS, staccato) per contact", "Focus & Protection", 12, Icons.Default.Vibration),
+
+            // 10. EMERGENCY SOS
+            SettingsSearchItem("Emergency SOS", "Alert your emergency contacts with your location and call local emergency services", "Emergency SOS", 13, Icons.Default.Sos),
+            SettingsSearchItem("Emergency Contacts", "Add or remove the contacts who receive your SOS alert", "Emergency SOS", 13, Icons.Default.Contacts),
+            SettingsSearchItem("Share Location in Emergency", "Attach a map link with your GPS position to the emergency alert", "Emergency SOS", 13, Icons.Default.LocationOn),
+            SettingsSearchItem("Emergency Number to Call", "Choose the number dialed when the SOS button is activated, such as 112", "Emergency SOS", 13, Icons.Default.LocalPhone)
         )
     }
 
@@ -379,7 +384,7 @@ fun GeneralSettings(
                         title = stringResource(R.string.cat_sound_gestures),
                         subtitle = stringResource(R.string.cat_sound_gestures_sub),
                         onClick = { onNavigateToTab(2, null) },
-                        icon = Icons.Default.VolumeUp,
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
                         iconBgColor = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.secondary
                     )
@@ -542,6 +547,26 @@ fun GeneralSettings(
                         icon = Icons.Default.MusicNote,
                         iconBgColor = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            // 11. Emergency SOS
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardBgColor),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    SettingsRowNav(
+                        title = stringResource(R.string.sos_title),
+                        subtitle = stringResource(R.string.sos_sub),
+                        onClick = { onNavigateToTab(13, null) },
+                        icon = Icons.Default.Sos,
+                        iconBgColor = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.error
                     )
                 }
             }

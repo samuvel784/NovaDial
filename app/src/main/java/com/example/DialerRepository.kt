@@ -41,9 +41,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.content.edit
 
 class DialerRepository(rawContext: Context) {
     val context: Context = rawContext.applicationContext
@@ -156,10 +158,10 @@ class DialerRepository(rawContext: Context) {
                 }
             }
 
-            prefs.edit()
-                .putInt("last_synced_contacts_count", systemContactsCount)
-                .putLong("last_synced_contacts_timestamp", maxTimestamp)
-                .apply()
+            prefs.edit {
+                putInt("last_synced_contacts_count", systemContactsCount)
+                putLong("last_synced_contacts_timestamp", maxTimestamp)
+            }
         } catch (_: Exception) {
             try {
                 val systemContacts = fetchSystemContacts()
@@ -215,11 +217,11 @@ class DialerRepository(rawContext: Context) {
                 }
             }
 
-            prefs.edit()
-                .putInt("last_synced_call_log_max_id", systemMaxId)
-                .putInt("last_synced_call_log_count", systemCount)
-                .putString("last_synced_locale_lang", currentLang)
-                .apply()
+            prefs.edit {
+                putInt("last_synced_call_log_max_id", systemMaxId)
+                putInt("last_synced_call_log_count", systemCount)
+                putString("last_synced_locale_lang", currentLang)
+            }
         } catch (_: Exception) {
             try {
                 val systemLogs = fetchSystemCallLogs()
@@ -489,7 +491,7 @@ class DialerRepository(rawContext: Context) {
         try {
             val sdf = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
             val colors = listOf(AvatarBlue to AvatarBlueText, AvatarOrange to AvatarOrangeText, AvatarGreen to AvatarGreenText)
-            val pair = colors[Math.abs(name.hashCode()) % colors.size]
+            val pair = colors[abs(name.hashCode()) % colors.size]
             val record = CallRecord(
                 name = name,
                 number = number,

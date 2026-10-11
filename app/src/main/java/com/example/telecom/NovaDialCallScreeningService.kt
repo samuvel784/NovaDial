@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -12,16 +12,17 @@ import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.example.data.AppDatabase
 import com.example.data.DialerDao
 import com.example.util.BlockedNumberContractManager
+import com.example.util.PhoneNumberCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Screens every incoming call BEFORE it rings:
@@ -30,7 +31,6 @@ import kotlinx.coroutines.withTimeoutOrNull
  *  3. Focus mode, protection level, VIP / favorites / repeat callers decide whether the call is silenced.
  * A silenced call still appears in the call log as a missed call.
  */
-@RequiresApi(Build.VERSION_CODES.N)
 class NovaDialCallScreeningService : CallScreeningService() {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -49,7 +49,7 @@ class NovaDialCallScreeningService : CallScreeningService() {
         scope.launch {
             val response = try {
                 // Android allows only a few seconds; if we are too slow the call simply rings normally.
-                withTimeoutOrNull(3500L) { decide(number) }
+                withTimeoutOrNull(3500.milliseconds) { decide(number) }
             } catch (e: Exception) {
                 Log.e(TAG, "Error screening call", e)
                 null
@@ -128,14 +128,10 @@ class NovaDialCallScreeningService : CallScreeningService() {
     }
 
     private fun isEmergency(number: String): Boolean {
-        return try {
-            @Suppress("DEPRECATION")
-            android.telephony.PhoneNumberUtils.isEmergencyNumber(number)
-        } catch (e: Exception) {
-            val clean = number.replace(Regex("[^0-9]"), "")
-            clean == "911" || clean == "112" || clean == "999" || clean == "108" ||
-                clean == "000" || clean == "110" || clean == "119"
-        }
+        val clean = number.replace(Regex("[^0-9]"), "")
+        if (clean == "911" || clean == "112" || clean == "999" || clean == "108" ||
+            clean == "000" || clean == "110" || clean == "119") return true
+        return PhoneNumberCompat.isEmergencyNumber(applicationContext, number)
     }
 
     /** Returns (isSavedContact, isFavorite) from the phone's real address book. */
@@ -183,7 +179,7 @@ class NovaDialCallScreeningService : CallScreeningService() {
                 while (!found && c.moveToNext()) {
                     val logged = c.getString(0).orEmpty()
                     found = logged.isNotBlank() &&
-                        android.telephony.PhoneNumberUtils.compare(context, logged, number)
+                        PhoneNumberCompat.numbersMatch(logged, number)
                 }
                 found
             } ?: false

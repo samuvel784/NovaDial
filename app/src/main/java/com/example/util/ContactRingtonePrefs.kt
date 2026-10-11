@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@ package com.example.util
 
 import android.content.Context
 import android.content.SharedPreferences
-import org.json.JSONArray
 import org.json.JSONObject
+import androidx.core.content.edit
 
 /**
  * Stores per-number ringtone + vibration pattern assignments as a JSON map in
@@ -68,6 +68,30 @@ object ContactRingtonePrefs {
 
     fun get(context: Context, number: String): Assignment? = getMap(context)[number.trim()]
 
+    /**
+     * Looks up an assignment for [number], matching by the last 8 digits so that
+     * "+919876543210" and "9876543210" resolve to the same assignment. Falls back to
+     * an exact match first.
+     */
+    fun find(context: Context, number: String): Assignment? {
+        val map = getMap(context)
+        map[number.trim()]?.let { return it }
+        if (number.isBlank()) return null
+        return map.entries
+            .firstOrNull { numbersMatch(it.key, number) }
+            ?.value
+    }
+
+    /** Last-8-digit number comparison; exact-equal short numbers also match. */
+    fun numbersMatch(a: String, b: String): Boolean {
+        val da = a.filter { it.isDigit() }
+        val db = b.filter { it.isDigit() }
+        if (da.isEmpty() || db.isEmpty()) return false
+        if (da == db) return true
+        if (minOf(da.length, db.length) < 7) return false
+        return da.takeLast(8) == db.takeLast(8)
+    }
+
     fun set(context: Context, number: String, ringtoneUri: String?, pattern: String) {
         val key = number.trim()
         if (key.isEmpty()) return
@@ -78,7 +102,7 @@ object ContactRingtonePrefs {
         } else {
             map[key] = Assignment(uri, pattern)
         }
-        prefs(context).edit().putString(KEY_MAP, toJson(map)).apply()
+        prefs(context).edit { putString(KEY_MAP, toJson(map)) }
     }
 
     fun remove(context: Context, number: String) {
@@ -86,7 +110,7 @@ object ContactRingtonePrefs {
         if (key.isEmpty()) return
         val map = getMap(context).toMutableMap()
         map.remove(key)
-        prefs(context).edit().putString(KEY_MAP, toJson(map)).apply()
+        prefs(context).edit { putString(KEY_MAP, toJson(map)) }
     }
 
     private fun toJson(map: Map<String, Assignment>): String {

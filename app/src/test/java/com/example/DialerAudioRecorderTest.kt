@@ -1,7 +1,6 @@
 package com.example
 
 import android.app.Application
-import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.example.util.CallAudioRecorder
 import kotlinx.coroutines.flow.first

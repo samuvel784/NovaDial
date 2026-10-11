@@ -33,14 +33,14 @@ import com.example.util.RecordingCompressionProfile
 import com.example.util.ReminderScheduler
 import com.example.widget.FavoritesWidgetProvider
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
+import androidx.core.content.edit
+import kotlin.time.Duration.Companion.milliseconds
+import com.example.ui.theme.ThemeMode
 
 class DialerViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DialerRepository(application)
@@ -73,7 +73,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     fun onAccountFilterChange(accountName: String) {
         selectedAccountFilter.value = accountName
         _selectedAccountFilterFlow.value = accountName
-        prefs.edit().putString("selected_account_filter", accountName).apply()
+        prefs.edit { putString("selected_account_filter", accountName) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("selected_account_filter", accountName))
@@ -84,10 +84,10 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     fun updateDefaultContactAccount(accountName: String, accountType: String) {
         defaultContactAccountName.value = accountName
         defaultContactAccountType.value = accountType
-        prefs.edit()
-            .putString("default_contact_account_name", accountName)
-            .putString("default_contact_account_type", accountType)
-            .apply()
+        prefs.edit {
+            putString("default_contact_account_name", accountName)
+            putString("default_contact_account_type", accountType)
+        }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("default_contact_account_name", accountName))
@@ -97,58 +97,38 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onDialpadTextFieldValueChange(newValue: TextFieldValue) {
-        val text = newValue.text
-        val safeStart = newValue.selection.min.coerceIn(0, text.length)
-        val safeEnd = newValue.selection.max.coerceIn(0, text.length)
-        val sanitizedValue = if (safeStart != newValue.selection.start || safeEnd != newValue.selection.end) {
-            newValue.copy(selection = TextRange(safeStart, safeEnd))
-        } else {
-            newValue
-        }
-        dialpadTextFieldValue.value = sanitizedValue
-        dialpadInput.value = text
-        _dialpadInputFlow.value = text
+        applyDialpadText(newValue.text)
     }
 
     fun onDialpadInputChange(newInput: String) {
-        val currentTfv = dialpadTextFieldValue.value
-        if (currentTfv.text != newInput) {
-            val newSelection = TextRange(newInput.length)
-            dialpadTextFieldValue.value = TextFieldValue(text = newInput, selection = newSelection)
-        }
-        dialpadInput.value = newInput
-        _dialpadInputFlow.value = newInput
+        applyDialpadText(newInput)
     }
 
     fun insertDialpadDigit(digit: String) {
-        val current = dialpadTextFieldValue.value
-        val text = current.text
-        val start = current.selection.min.coerceIn(0, text.length)
-        val end = current.selection.max.coerceIn(0, text.length)
-        val newText = text.replaceRange(start, end, digit)
-        val newCursorPos = (start + digit.length).coerceIn(0, newText.length)
-        onDialpadTextFieldValueChange(TextFieldValue(text = newText, selection = TextRange(newCursorPos)))
+        applyDialpadText(dialpadInput.value + digit)
     }
 
     fun backspaceDialpad() {
-        val current = dialpadTextFieldValue.value
-        val text = current.text
-        if (text.isEmpty()) return
-
-        val start = current.selection.min.coerceIn(0, text.length)
-        val end = current.selection.max.coerceIn(0, text.length)
-
-        if (start != end) {
-            val newText = text.removeRange(start, end)
-            onDialpadTextFieldValueChange(TextFieldValue(text = newText, selection = TextRange(start.coerceIn(0, newText.length))))
-        } else if (start > 0) {
-            val newText = text.removeRange(start - 1, start)
-            onDialpadTextFieldValueChange(TextFieldValue(text = newText, selection = TextRange((start - 1).coerceIn(0, newText.length))))
-        }
+        val raw = dialpadInput.value
+        if (raw.isEmpty()) return
+        applyDialpadText(raw.dropLast(1))
     }
 
     fun clearDialpad() {
-        onDialpadTextFieldValueChange(TextFieldValue(""))
+        applyDialpadText("")
+    }
+
+    /**
+     * Stores [text] as the canonical (raw) dialpad value and renders the spaced
+     * display form into [dialpadTextFieldValue]. The keypad caps the number at
+     * [com.example.util.DialpadFormatter.MAX_DIGITS] digits.
+     */
+    private fun applyDialpadText(text: String) {
+        val raw = com.example.util.DialpadFormatter.raw(text)
+        dialpadInput.value = raw
+        _dialpadInputFlow.value = raw
+        val display = com.example.util.DialpadFormatter.format(raw)
+        dialpadTextFieldValue.value = TextFieldValue(text = display, selection = TextRange(display.length))
     }
 
     // PERF FIX: Replaces 100,000 nested iterations with instantaneous O(1) in-memory cache lookup
@@ -180,23 +160,14 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         isEditContactDialogVisible.value = true
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    val contactsPaged: Flow<PagingData<Contact>> = combine(_searchQueryFlow.debounce(100), _selectedAccountFilterFlow) { query, account ->
-        Pair(query, account)
-    }.flatMapLatest { (query, account) ->
-        repository.getContactsPaged(query, account)
-    }.cachedIn(viewModelScope)
-
-    val callHistoryPaged: Flow<PagingData<CallRecord>> = repository.getCallHistoryPaged().cachedIn(viewModelScope)
-
     val favoriteContacts: StateFlow<List<Contact>> = repository.getFavoriteContacts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     val allContactsFlow: StateFlow<List<Contact>> = repository.getAllContactsFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     val allCallHistoryFlow: StateFlow<List<CallRecord>> = repository.getAllCallHistoryFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     @OptIn(FlowPreview::class)
     val dialpadMatches: StateFlow<List<DialpadMatch>> = combine(
@@ -220,7 +191,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                     .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
                     .lowercase(java.util.Locale.ROOT)
                 val cleanContactNumber = contact.number.filter { it.isDigit() || it == '+' }
-                val t9 = if (contact.t9Mapping.isNotBlank()) contact.t9Mapping else com.example.util.T9HighlightHelper.nameToT9(contact.name)
+                val t9 = contact.t9Mapping.ifBlank { com.example.util.T9HighlightHelper.nameToT9(contact.name) }
 
                 normalizedName.contains(normalizedQuery) ||
                 (cleanQueryDigits.isNotEmpty() && cleanContactNumber.contains(cleanQueryDigits)) ||
@@ -277,7 +248,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }.flowOn(Dispatchers.Default)
-     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     // UI State
     var isDialpadVisible = mutableStateOf(false)
@@ -285,7 +256,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     var isSettingsVisible = mutableStateOf(false)
     var isDarkTheme = mutableStateOf(prefs.getBoolean("is_dark_theme", true))
     var themeMode = mutableStateOf(
-        com.example.ui.theme.ThemeMode.fromKey(prefs.getString("theme_mode", "default"))
+        ThemeMode.fromKey(prefs.getString("theme_mode", "default"))
     )
     var isAmoledMode = mutableStateOf(prefs.getBoolean("is_amoled_mode", false))
     var isQuickReplyDirectSms = mutableStateOf(prefs.getBoolean("quick_reply_direct_sms", true))
@@ -294,7 +265,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     var avatarShapeType = mutableStateOf(prefs.getString("avatar_shape_type", "squircle") ?: "squircle")
     var themeColor = mutableStateOf(prefs.getString("theme_color", "nova_aurora") ?: "nova_aurora")
     var useDynamicColor = mutableStateOf(prefs.getBoolean("use_dynamic_color", Build.VERSION.SDK_INT >= Build.VERSION_CODES.S))
-    var defaultTab = mutableIntStateOf(prefs.getInt("default_tab", 0).coerceIn(0, 2))
     var callWaitingEnabled = mutableStateOf(prefs.getBoolean("call_waiting_enabled", true))
     var recordingEnabled = mutableStateOf(prefs.getBoolean("recording_enabled", false))
     var autoTuneRecordingVolume = mutableStateOf(prefs.getBoolean("auto_tune_recording_volume", true))
@@ -344,10 +314,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     var preferredSim = mutableStateOf(prefs.getString("preferred_sim", "Ask") ?: "Ask")
     var voicemailNumber = mutableStateOf("+1 (555) 011-9988")
 
-    val blockedNumbers = mutableStateListOf<String>()
-    val quickResponses = mutableStateListOf<String>()
-    val speedDialMap = mutableStateMapOf<Int, String>()
-
     var hasContactsPermission = mutableStateOf(false)
     var hasCallLogPermission = mutableStateOf(false)
     var hasNotificationPermission = mutableStateOf(false)
@@ -372,21 +338,21 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val recordingsFlow: StateFlow<List<CallRecording>> = repository.getAllCallRecordings()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     val notesFlow: StateFlow<List<CallNote>> = repository.getAllCallNotes()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     val spamFlow: StateFlow<List<SpamNumber>> = repository.getAllSpamNumbers()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     val remindersFlow: StateFlow<List<CallReminder>> = repository.getAllReminders()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.milliseconds), emptyList())
 
     init {
         viewModelScope.launch {
             val savedSim = repository.getPreferredSim()
-            preferredSim.value = if (savedSim.isNotBlank()) savedSim else "Ask"
+            preferredSim.value = savedSim.ifBlank { "Ask" }
             voicemailNumber.value = repository.getVoicemailNumber()
 
             try {
@@ -512,26 +478,26 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updatePreferredSim(sim: String) {
         preferredSim.value = sim
-        prefs.edit().putString("preferred_sim", sim).apply()
+        prefs.edit { putString("preferred_sim", sim) }
         viewModelScope.launch { repository.savePreferredSim(sim) }
     }
 
-    fun updateThemeMode(mode: com.example.ui.theme.ThemeMode) {
+    fun updateThemeMode(mode: ThemeMode) {
         themeMode.value = mode
-        val dark = mode != com.example.ui.theme.ThemeMode.DAY
-        prefs.edit()
-            .putString("theme_mode", mode.key)
-            .putBoolean("is_dark_theme", dark)
-            .putBoolean("is_amoled_mode", mode == com.example.ui.theme.ThemeMode.NIGHT)
-            .apply()
+        val dark = mode != ThemeMode.DAY
+        prefs.edit {
+            putString("theme_mode", mode.key)
+            putBoolean("is_dark_theme", dark)
+            putBoolean("is_amoled_mode", mode == ThemeMode.NIGHT)
+        }
         // keep isDarkTheme state coherent for any legacy readers
         isDarkTheme.value = dark
-        isAmoledMode.value = mode == com.example.ui.theme.ThemeMode.NIGHT
+        isAmoledMode.value = mode == ThemeMode.NIGHT
     }
 
     fun updateDarkTheme(dark: Boolean) {
         isDarkTheme.value = dark
-        prefs.edit().putBoolean("is_dark_theme", dark).apply()
+        prefs.edit { putBoolean("is_dark_theme", dark) }
     }
 
     fun updateAmoledMode(amoled: Boolean) {
@@ -544,40 +510,19 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         editor.apply()
     }
 
-    fun updateCustomColorHex(hex: String) {
-        customColorHex.value = hex
-        prefs.edit().putString("custom_color_hex", hex).apply()
-    }
-
     fun updateM3Expressive(expressive: Boolean) {
         isM3Expressive.value = expressive
-        prefs.edit().putBoolean("is_m3_expressive", expressive).apply()
+        prefs.edit { putBoolean("is_m3_expressive", expressive) }
     }
 
     fun updateAvatarShapeType(shapeType: String) {
         avatarShapeType.value = shapeType
-        prefs.edit().putString("avatar_shape_type", shapeType).apply()
-    }
-
-    fun updateUseDynamicColor(dynamic: Boolean) {
-        useDynamicColor.value = dynamic
-        prefs.edit().putBoolean("use_dynamic_color", dynamic).apply()
-    }
-
-    fun updateThemeColor(color: String) {
-        themeColor.value = color
-        prefs.edit().putString("theme_color", color).apply()
-    }
-
-    fun updateDefaultTab(tab: Int) {
-        val keys = listOf("HOME", "RECENTS", "FAVORITES")
-        val key = keys.getOrElse(tab) { "HOME" }
-        updateDefaultStartupTabKey(key)
+        prefs.edit { putString("avatar_shape_type", shapeType) }
     }
 
     fun updateDefaultStartupTabKey(key: String) {
         defaultStartupTabKey.value = key
-        prefs.edit().putString("default_startup_tab_key", key).apply()
+        prefs.edit { putString("default_startup_tab_key", key) }
         val slots = listOf("HOME", "RECENTS", "FAVORITES")
         selectedTab.intValue = slots.indexOf(key).coerceAtLeast(0)
     }
@@ -594,7 +539,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateDialpadTonesEnabled(enabled: Boolean) {
         dialpadTonesEnabled.value = enabled
-        prefs.edit().putBoolean("dialpad_tones_enabled", enabled).apply()
+        prefs.edit { putBoolean("dialpad_tones_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("dialpad_tones_enabled", enabled.toString()))
@@ -604,7 +549,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateVibrateOnClickEnabled(enabled: Boolean) {
         vibrateOnClickEnabled.value = enabled
-        prefs.edit().putBoolean("vibrate_on_click_enabled", enabled).apply()
+        prefs.edit { putBoolean("vibrate_on_click_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("vibrate_on_click_enabled", enabled.toString()))
@@ -614,7 +559,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateFlipToSilenceEnabled(enabled: Boolean) {
         flipToSilenceEnabled.value = enabled
-        prefs.edit().putBoolean("flip_to_silence_enabled", enabled).apply()
+        prefs.edit { putBoolean("flip_to_silence_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("flip_to_silence_enabled", enabled.toString()))
@@ -624,7 +569,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateCallWaitingEnabled(enabled: Boolean) {
         callWaitingEnabled.value = enabled
-        prefs.edit().putBoolean("call_waiting_enabled", enabled).apply()
+        prefs.edit { putBoolean("call_waiting_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("call_waiting_enabled", enabled.toString()))
@@ -634,7 +579,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateHideCallerIdEnabled(enabled: Boolean) {
         isHideCallerIdEnabled.value = enabled
-        prefs.edit().putBoolean("is_hide_caller_id_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_hide_caller_id_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_hide_caller_id_enabled", enabled.toString()))
@@ -645,7 +590,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     fun updateClirPrefix(prefix: String) {
         val sanitized = prefix.trim().ifBlank { "#31#" }
         clirPrefix.value = sanitized
-        prefs.edit().putString("clir_prefix", sanitized).apply()
+        prefs.edit { putString("clir_prefix", sanitized) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("clir_prefix", sanitized))
@@ -655,7 +600,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateRecordingEnabled(enabled: Boolean) {
         recordingEnabled.value = enabled
-        prefs.edit().putBoolean("recording_enabled", enabled).apply()
+        prefs.edit { putBoolean("recording_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("recording_enabled", enabled.toString()))
@@ -665,7 +610,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateAutoTuneRecordingVolume(enabled: Boolean) {
         autoTuneRecordingVolume.value = enabled
-        prefs.edit().putBoolean("auto_tune_recording_volume", enabled).apply()
+        prefs.edit { putBoolean("auto_tune_recording_volume", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("auto_tune_recording_volume", enabled.toString()))
@@ -675,7 +620,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateRecordingChimeEnabled(enabled: Boolean) {
         recordingChimeEnabled.value = enabled
-        prefs.edit().putBoolean("recording_chime_enabled", enabled).apply()
+        prefs.edit { putBoolean("recording_chime_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("recording_chime_enabled", enabled.toString()))
@@ -685,7 +630,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateBiometricLockEnabled(enabled: Boolean) {
         isBiometricLockEnabled.value = enabled
-        prefs.edit().putBoolean("is_biometric_lock_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_biometric_lock_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_biometric_lock_enabled", enabled.toString()))
@@ -695,7 +640,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateRecordingsBiometricLockEnabled(enabled: Boolean) {
         isRecordingsBiometricLockEnabled.value = enabled
-        prefs.edit().putBoolean("is_recordings_biometric_lock_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_recordings_biometric_lock_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_recordings_biometric_lock_enabled", enabled.toString()))
@@ -705,7 +650,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateAutoRecordCallsEnabled(enabled: Boolean) {
         isAutoRecordCallsEnabled.value = enabled
-        prefs.edit().putBoolean("is_auto_record_calls_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_auto_record_calls_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_auto_record_calls_enabled", enabled.toString()))
@@ -715,7 +660,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateDynamicIslandEnabled(enabled: Boolean) {
         isDynamicIslandEnabled.value = enabled
-        prefs.edit().putBoolean("is_dynamic_island_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_dynamic_island_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_dynamic_island_enabled", enabled.toString()))
@@ -725,7 +670,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateDynamicIslandSpeakerOnly(speakerOnly: Boolean) {
         isDynamicIslandSpeakerOnly.value = speakerOnly
-        prefs.edit().putBoolean("is_dynamic_island_speaker_only", speakerOnly).apply()
+        prefs.edit { putBoolean("is_dynamic_island_speaker_only", speakerOnly) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_dynamic_island_speaker_only", speakerOnly.toString()))
@@ -735,7 +680,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateAutoExportRecordingsEnabled(enabled: Boolean) {
         isAutoExportRecordingsEnabled.value = enabled
-        prefs.edit().putBoolean("is_auto_export_recordings_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_auto_export_recordings_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_auto_export_recordings_enabled", enabled.toString()))
@@ -755,7 +700,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updatePocketProtectionEnabled(enabled: Boolean) {
         isPocketProtectionEnabled.value = enabled
-        prefs.edit().putBoolean("is_pocket_protection_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_pocket_protection_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_pocket_protection_enabled", enabled.toString()))
@@ -765,7 +710,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateCallbackRemindersEnabled(enabled: Boolean) {
         isCallbackRemindersEnabled.value = enabled
-        prefs.edit().putBoolean("is_callback_reminders_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_callback_reminders_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_callback_reminders_enabled", enabled.toString()))
@@ -775,7 +720,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateCallNotesEnabled(enabled: Boolean) {
         isCallNotesEnabled.value = enabled
-        prefs.edit().putBoolean("is_call_notes_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_call_notes_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_call_notes_enabled", enabled.toString()))
@@ -785,7 +730,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateFakeCallSimulatorEnabled(enabled: Boolean) {
         isFakeCallSimulatorEnabled.value = enabled
-        prefs.edit().putBoolean("is_fake_call_simulator_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_fake_call_simulator_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_fake_call_simulator_enabled", enabled.toString()))
@@ -793,19 +738,9 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateDashboardMode(mode: String) {
-        dashboardMode.value = mode
-        prefs.edit().putString("dashboard_mode", mode).apply()
-        viewModelScope.launch {
-            try {
-                repository.dao.insertSetting(AppSetting("dashboard_mode", mode))
-            } catch (_: Exception) {}
-        }
-    }
-
     fun updateCallLogFiltersEnabled(enabled: Boolean) {
         isCallLogFiltersEnabled.value = enabled
-        prefs.edit().putBoolean("is_call_log_filters_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_call_log_filters_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("is_call_log_filters_enabled", enabled.toString()))
@@ -815,13 +750,13 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateRowSwipeEnabled(enabled: Boolean) {
         isRowSwipeEnabled.value = enabled
-        prefs.edit().putBoolean("is_row_swipe_enabled", enabled).apply()
+        prefs.edit { putBoolean("is_row_swipe_enabled", enabled) }
     }
 
     fun saveLastOutgoingNumber(number: String) {
         if (number.isNotBlank()) {
             lastDialedNumber.value = number
-            prefs.edit().putString("last_dialed_number", number).apply()
+            prefs.edit { putString("last_dialed_number", number) }
         }
     }
 
@@ -890,7 +825,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                     arr.put(org.json.JSONObject().put("n", c.name).put("v", c.number))
                 }
             }
-            prefs.edit().putString(FavoritesWidgetProvider.KEY_SNAPSHOT, arr.toString()).apply()
+            prefs.edit { putString(FavoritesWidgetProvider.KEY_SNAPSHOT, arr.toString()) }
             FavoritesWidgetProvider.refreshAll(getApplication())
         } catch (_: Exception) {
             // Widget refresh must never crash the app
@@ -967,7 +902,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateQuickReplyDirectSms(enabled: Boolean) {
         isQuickReplyDirectSms.value = enabled
-        prefs.edit().putBoolean("quick_reply_direct_sms", enabled).apply()
+        prefs.edit { putBoolean("quick_reply_direct_sms", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("quick_reply_direct_sms", enabled.toString()))
@@ -1024,20 +959,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun addContact(
-        name: String,
-        number: String,
-        label: String,
-        email: String = "",
-        accountName: String = "",
-        accountType: String = ""
-    ) {
-        viewModelScope.launch {
-            repository.addContact(name, number, label, email, accountName, accountType)
-            refreshAvailableAccounts()
-        }
-    }
-
     fun addContactWithDetails(
         name: String,
         numbers: List<LabeledNumber>,
@@ -1059,39 +980,11 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    suspend fun getCallNote(number: String): CallNote? = repository.getCallNote(number)
-
-    fun deleteCallNote(number: String) {
-        viewModelScope.launch { repository.deleteCallNotesForNumber(number) }
-    }
-
     fun deleteCallNoteById(id: Long) {
         viewModelScope.launch { repository.deleteCallNoteById(id) }
     }
 
     fun getCallNotesForNumberFlow(number: String): Flow<List<CallNote>> = repository.getCallNotesForNumberFlow(number)
-
-    fun toggleCallRecording(context: Context, phoneNumber: String, callerName: String = "Unknown") {
-        if (CallAudioRecorder.isRecording.value) {
-            val result = CallAudioRecorder.stopRecording()
-            val file = result.file
-            if (file != null && file.exists() && file.length() > 0L) {
-                val durationSec = result.durationSeconds.coerceAtLeast(1L)
-                val sdf = SimpleDateFormat("MMM d, HH:mm", com.example.ui.components.getCurrentLocale(context))
-                val timestamp = sdf.format(Date())
-                val recording = CallRecording(
-                    number = phoneNumber,
-                    name = if (callerName.isBlank()) phoneNumber else callerName,
-                    timestamp = timestamp,
-                    duration = durationSec,
-                    filePath = file.absolutePath
-                )
-                saveCallRecording(recording)
-            }
-        } else {
-            CallAudioRecorder.startRecording(context, phoneNumber)
-        }
-    }
 
     fun saveCallRecording(recording: CallRecording) {
         viewModelScope.launch {
@@ -1177,13 +1070,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun deleteContact(number: String) {
-        viewModelScope.launch {
-            repository.deleteContact(number)
-            refreshAvailableAccounts()
-        }
-    }
-
     fun deleteCallLog(id: Int) {
         viewModelScope.launch { repository.deleteCallLog(id) }
     }
@@ -1200,7 +1086,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateFlashAlertsEnabled(enabled: Boolean) {
         flashAlertsEnabled.value = enabled
-        prefs.edit().putBoolean("flash_alerts_enabled", enabled).apply()
+        prefs.edit { putBoolean("flash_alerts_enabled", enabled) }
         viewModelScope.launch {
             try {
                 repository.dao.insertSetting(AppSetting("flash_alerts_enabled", enabled.toString()))
@@ -1249,21 +1135,10 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateReminder(reminder: CallReminder) {
-        viewModelScope.launch { repository.updateReminder(reminder) }
-    }
-
     fun deleteReminder(reminder: CallReminder) {
         viewModelScope.launch {
             repository.deleteReminder(reminder)
             ReminderScheduler.cancel(getApplication(), reminder.id)
-        }
-    }
-
-    fun deleteReminderById(id: Int) {
-        viewModelScope.launch {
-            repository.deleteReminderById(id)
-            ReminderScheduler.cancel(getApplication(), id)
         }
     }
 

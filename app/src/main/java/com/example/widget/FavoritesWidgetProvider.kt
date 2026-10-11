@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.example.MainActivity
 import com.example.R
+import com.example.WidgetCallActivity
 import org.json.JSONArray
 
 /**
@@ -37,8 +37,8 @@ import org.json.JSONArray
  * change (see DialerViewModel.updateWidgetFavorites); this provider only renders
  * that snapshot so it never touches the database from the launcher process.
  *
- * Tapping a row deep-links into MainActivity with the number; the activity
- * places the call when CALL_PHONE is granted, otherwise it prefills the dialpad.
+ * Tapping a row deep-links into the non-exported WidgetCallActivity, which places
+ * the call when CALL_PHONE is granted, otherwise prefills the dialpad.
  */
 class FavoritesWidgetProvider : AppWidgetProvider() {
 
@@ -92,7 +92,7 @@ class FavoritesWidgetProvider : AppWidgetProvider() {
                 val (name, number) = rows[i]
                 val row = RemoteViews(context.packageName, R.layout.widget_favorites_row)
                 row.setTextViewText(R.id.widget_row_initials, initials(name))
-                row.setTextViewText(R.id.widget_row_name, if (name.isBlank()) number else name)
+                row.setTextViewText(R.id.widget_row_name, name.ifBlank { number })
                 row.setTextViewText(R.id.widget_row_number, number)
                 row.setOnClickPendingIntent(
                     R.id.widget_row_root,
@@ -141,7 +141,7 @@ class FavoritesWidgetProvider : AppWidgetProvider() {
             number: String,
             name: String
         ): PendingIntent {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, WidgetCallActivity::class.java).apply {
                 action = ACTION_WIDGET_CALL
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -168,10 +168,7 @@ class FavoritesWidgetProvider : AppWidgetProvider() {
         }
 
         private fun pendingFlags(): Int =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
+            // minSdk 24 > M (23); FLAG_IMMUTABLE is always available.
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

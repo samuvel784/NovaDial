@@ -19,7 +19,6 @@ package com.example.data
 
 import android.content.Context
 import androidx.room.*
-import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.example.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -198,7 +197,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .openHelperFactory(factory)
                     // High-concurrency encrypted WAL mode: readers never block writers
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                    .fallbackToDestructiveMigrationOnDowngrade()
+                    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
                     .build()
             } catch (e: Throwable) {
                 // Host JVM Unit Test fallback (Robolectric without native SQLCipher .so)

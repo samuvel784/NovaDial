@@ -10,15 +10,13 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
-import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
-import android.telephony.PhoneNumberUtils
-import android.telephony.SubscriptionManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -29,6 +27,7 @@ import com.example.ui.components.getCurrentLocale
 import com.example.util.CallAudioHelper
 import com.example.util.CallAudioRecorder
 import com.example.util.MultiSimManager
+import com.example.util.PhoneNumberCompat
 import com.example.util.RecordingFeedbackHelper
 import com.example.util.SimCallTracker
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +41,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.milliseconds
 
 object CallManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -53,12 +54,6 @@ object CallManager {
     fun setAppInForeground(inForeground: Boolean) {
         _isAppInForeground.value = inForeground
     }
-
-    var isAppInForegroundValue: Boolean
-        get() = _isAppInForeground.value
-        set(value) {
-            _isAppInForeground.value = value
-        }
 
     private val _currentCall = MutableStateFlow<Call?>(null)
     val currentCall: StateFlow<Call?> = _currentCall.asStateFlow()
@@ -135,12 +130,16 @@ object CallManager {
         val extras = details.extras
         if (extras != null) {
             if (extras.getBoolean("android.telecom.extra.IS_CONFERENCE", false)) return true
-            val participants = extras.getParcelableArrayList<android.net.Uri>("android.telecom.extra.CONFERENCE_PARTICIPANTS")
+            val participants = androidx.core.os.BundleCompat.getParcelableArrayList(extras, "android.telecom.extra.CONFERENCE_PARTICIPANTS", android.net.Uri::class.java)
             if (participants != null && participants.size > 1) return true
         }
         return false
     }
 
+    // Held for the whole process lifetime only to expose the Application context to Telecom
+    // helpers. The Application context is process-scoped and never holds an Activity, so this
+    // is not a real leak (lint's generic static-field rule does not know the context type).
+    @SuppressLint("StaticFieldLeak")
     @Volatile
     var appContext: Context? = null
 
@@ -156,6 +155,9 @@ object CallManager {
             notifyCallsChanged()
 
             if (state == Call.STATE_DISCONNECTED) {
+                // Clear the waiting-call slot *before* the early return; otherwise the
+                // waitingCall state would never be reset (this branch was previously unreachable).
+                if (call == _waitingCall.value) updateWaitingCall(null)
                 removeCall(call)
                 return
             }
@@ -169,8 +171,6 @@ object CallManager {
                     }
                     autoStartRecordingIfNeeded()
                 }
-            } else if (call == _waitingCall.value && state == Call.STATE_DISCONNECTED) {
-                updateWaitingCall(null)
             }
             autoSelectCurrentCall()
         }
@@ -208,7 +208,7 @@ object CallManager {
     private fun notifyCallsChanged() {
         val currentList = ArrayList(_calls.value)
         _calls.value = currentList
-        _isConferenceActive.value = currentList.any { it.state != Call.STATE_DISCONNECTED && isConference(it) } ||
+        _isConferenceActive.value = currentList.any { it.safeState != Call.STATE_DISCONNECTED && isConference(it) } ||
                 isConference(_currentCall.value)
     }
 
@@ -218,7 +218,7 @@ object CallManager {
             call.registerCallback(callCallback)
         }
         notifyCallsChanged()
-        if (call.state == Call.STATE_RINGING && _currentCall.value != null && _currentCall.value != call) {
+        if (call.safeState == Call.STATE_RINGING && _currentCall.value != null && _currentCall.value != call) {
             updateWaitingCall(call)
         } else {
             autoSelectCurrentCall()
@@ -241,16 +241,16 @@ object CallManager {
     }
 
     fun autoSelectCurrentCall() {
-        val activeCalls = _calls.value.filter { it.state != Call.STATE_DISCONNECTED }
+        val activeCalls = _calls.value.filter { it.safeState != Call.STATE_DISCONNECTED }
         if (activeCalls.isEmpty()) {
             updateCall(null)
             return
         }
 
         val target = activeCalls.find { it.children.isNotEmpty() || isConference(it) }
-            ?: activeCalls.find { it.state == Call.STATE_ACTIVE }
-            ?: activeCalls.find { it.state in listOf(Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_RINGING) }
-            ?: activeCalls.find { it.state == Call.STATE_HOLDING }
+            ?: activeCalls.find { it.safeState == Call.STATE_ACTIVE }
+            ?: activeCalls.find { it.safeState in listOf(Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_RINGING) }
+            ?: activeCalls.find { it.safeState == Call.STATE_HOLDING }
             ?: activeCalls.firstOrNull()
 
         if (_currentCall.value != target) {
@@ -264,9 +264,9 @@ object CallManager {
     fun updateCall(call: Call?) {
         _currentCall.value = call
         if (call != null) {
-            _callState.value = call.state
-            _isConferenceActive.value = _calls.value.any { it.state != Call.STATE_DISCONNECTED && isConference(it) } || isConference(call)
-            if (call.state == Call.STATE_ACTIVE) {
+            _callState.value = call.safeState
+            _isConferenceActive.value = _calls.value.any { it.safeState != Call.STATE_DISCONNECTED && isConference(it) } || isConference(call)
+            if (call.safeState == Call.STATE_ACTIVE) {
                 if (_activeStartTimestamp.value == 0L) {
                     val connect = call.details?.connectTimeMillis ?: 0L
                     _activeStartTimestamp.value = if (connect > 0L) connect else System.currentTimeMillis()
@@ -275,7 +275,7 @@ object CallManager {
                 _activeStartTimestamp.value = 0L
             }
 
-            if (call.state == Call.STATE_HOLDING) {
+            if (call.safeState == Call.STATE_HOLDING) {
                 try { call.unhold() } catch (_: Exception) {}
             }
 
@@ -438,9 +438,9 @@ object CallManager {
     }
 
     fun mergeCalls() {
-        val all = _calls.value.filter { it.state != Call.STATE_DISCONNECTED }
-        val active = all.find { it.state == Call.STATE_ACTIVE }
-        val held = all.find { it.state == Call.STATE_HOLDING }
+        val all = _calls.value.filter { it.safeState != Call.STATE_DISCONNECTED }
+        val active = all.find { it.safeState == Call.STATE_ACTIVE }
+        val held = all.find { it.safeState == Call.STATE_HOLDING }
 
         if (active != null && held != null) {
             try { active.conference(held) } catch (_: Exception) { held.conference(active) }
@@ -463,24 +463,42 @@ object CallManager {
     fun disconnect() {
         try {
             val call = _currentCall.value ?: return
-            if (call.state == Call.STATE_RINGING) call.reject(false, null) else call.disconnect()
-            if (_calls.value.none { it != call && it.state != Call.STATE_DISCONNECTED }) updateCall(null)
+            if (call.safeState == Call.STATE_RINGING) call.reject(false, null) else call.disconnect()
+            if (_calls.value.none { it != call && it.safeState != Call.STATE_DISCONNECTED }) updateCall(null)
         } catch (_: Exception) {}
     }
 
     fun setMuted(muted: Boolean) { inCallService?.setMuted(muted) }
+
+    // InCallService.setAudioRoute was deprecated in API 34 in favour of
+    // requestCallEndpointChange, which requires API 34+. Keep the route API so the
+    // app still works on minSdk 24.
+    @Suppress("DEPRECATION")
+    private fun setAudioRouteCompat(route: Int) {
+        inCallService?.setAudioRoute(route)
+    }
+
     fun setSpeaker(speaker: Boolean) {
-        inCallService?.setAudioRoute(if (speaker) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_EARPIECE)
+        setAudioRouteCompat(if (speaker) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_EARPIECE)
     }
     fun setBluetooth(bluetooth: Boolean) {
-        inCallService?.setAudioRoute(if (bluetooth) CallAudioState.ROUTE_BLUETOOTH else CallAudioState.ROUTE_EARPIECE)
+        setAudioRouteCompat(if (bluetooth) CallAudioState.ROUTE_BLUETOOTH else CallAudioState.ROUTE_EARPIECE)
     }
     fun setHold(hold: Boolean) {
         if (hold) _currentCall.value?.hold() else _currentCall.value?.unhold()
     }
 
     fun silenceRinger(context: Context) {
-        (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.silenceRinger()
+        // TelecomManager.silenceRinger() is documented as requiring MODIFY_PHONE_STATE, which a
+        // dialer can only hold when the OEM grants it (e.g. as the privileged default dialer).
+        // We attempt the call and fail soft with SecurityException so unprivileged devices do
+        // not crash while privileged ones keep the feature.
+        @SuppressLint("MissingPermission")
+        try {
+            (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.silenceRinger()
+        } catch (_: SecurityException) {
+            // Not permitted on this device; ignore.
+        }
     }
 
     fun playDtmf(key: Char) {
@@ -488,7 +506,7 @@ object CallManager {
         dtmfJob?.cancel()
         try { call.playDtmfTone(key) } catch (_: Exception) {}
         dtmfJob = scope.launch(Dispatchers.Default) {
-            delay(150)
+            delay(150.milliseconds)
             try { call.stopDtmfTone() } catch (_: Exception) {}
         }
     }
@@ -515,7 +533,8 @@ object CallManager {
             if (withoutPrefix in standardEmergency) return true
         }
         return try {
-            PhoneNumberUtils.isEmergencyNumber(trimmed)
+            val context = appContext ?: return false
+            PhoneNumberCompat.isEmergencyNumber(context, trimmed)
         } catch (_: Exception) {
             false
         }
@@ -529,11 +548,19 @@ object CallManager {
         }
 
         val isEmergency = isEmergencyNumber(number)
-        val targetSlot = if (preferredSim.contains("2")) 2 else 1
+        // Resolve the SIM account from its label first, then derive the slot from the account, so a
+        // carrier name that merely contains a digit can never route the call to the wrong SIM.
+        val matchedAccount = if (!isEmergency && preferredSim != "Ask") {
+            findPhoneAccountForSlot(context, preferredSim)
+        } else {
+            null
+        }
+        val targetSlot = matchedAccount?.slotIndex?.plus(1)
+            ?: if (preferredSim.endsWith("2")) 2 else 1
         _currentSimSlot.value = targetSlot
         SimCallTracker.recordOutgoingCall(context, number, targetSlot)
 
-        _currentCall.value?.takeIf { it.state == Call.STATE_ACTIVE }?.hold()
+        _currentCall.value?.takeIf { it.safeState == Call.STATE_ACTIVE }?.hold()
 
         val prefs = context.getSharedPreferences("dialer_prefs", Context.MODE_PRIVATE)
         val hideId = prefs.getBoolean("is_hide_caller_id_enabled", false)
@@ -543,20 +570,18 @@ object CallManager {
         val uri = Uri.fromParts("tel", dialedNumber, null)
         val extras = Bundle()
 
-        if (!isEmergency && preferredSim != "Ask") {
-            val matchedAccount = findPhoneAccountForSlot(context, targetSlot, preferredSim)
-            if (matchedAccount?.accountHandle != null) {
-                // Official AOSP Telecom binding
-                extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, matchedAccount.accountHandle)
+        val accountHandle = matchedAccount?.accountHandle
+        if (!isEmergency && preferredSim != "Ask" && matchedAccount != null && accountHandle != null) {
+            // Official AOSP Telecom binding
+            extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, accountHandle)
 
-                // Inject OEM-specific Multi-SIM extras so Samsung, Xiaomi, and MediaTek modems don't drop back to SIM 1
-                extras.putInt("android.telephony.extra.SUBSCRIPTION_INDEX", matchedAccount.subscriptionId)
-                extras.putInt("subscription", matchedAccount.subscriptionId)
-                extras.putInt("phone_subscription", matchedAccount.subscriptionId)
-                extras.putInt("slot", matchedAccount.slotIndex)
-                extras.putInt("simSlot", matchedAccount.slotIndex)
-                extras.putInt("com.android.phone.extra.slot", matchedAccount.slotIndex)
-            }
+            // Inject OEM-specific Multi-SIM extras so Samsung, Xiaomi, and MediaTek modems don't drop back to SIM 1
+            extras.putInt("android.telephony.extra.SUBSCRIPTION_INDEX", matchedAccount.subscriptionId)
+            extras.putInt("subscription", matchedAccount.subscriptionId)
+            extras.putInt("phone_subscription", matchedAccount.subscriptionId)
+            extras.putInt("slot", matchedAccount.slotIndex)
+            extras.putInt("simSlot", matchedAccount.slotIndex)
+            extras.putInt("com.android.phone.extra.slot", matchedAccount.slotIndex)
         }
 
         val tm = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
@@ -589,23 +614,27 @@ object CallManager {
     }
 
     @SuppressLint("MissingPermission")
-    private fun findPhoneAccountForSlot(context: Context, slotIndex: Int, preferredSimLabel: String): com.example.util.SimAccountInfo? {
-        val simAccounts = MultiSimManager.getActiveSimAccounts(context)
+    private fun findPhoneAccountForSlot(context: Context, preferredSimLabel: String): com.example.util.SimAccountInfo? {
+        val simAccounts = MultiSimManager.getCallableSims(context)
         if (simAccounts.isEmpty()) return null
 
-        val matchByLabel = simAccounts.find {
-            it.displayName.equals(preferredSimLabel, ignoreCase = true) ||
-            it.carrierName.equals(preferredSimLabel, ignoreCase = true)
-        }
-        if (matchByLabel != null) return matchByLabel
+        val label = preferredSimLabel.trim()
+        simAccounts.find {
+            it.displayName.equals(label, ignoreCase = true) || it.carrierName.equals(label, ignoreCase = true)
+        }?.let { return it }
 
-        return simAccounts.find { it.slotIndex == (slotIndex - 1) } ?: simAccounts.firstOrNull()
+        // "SIM 2" / "sim2" / "2" → hardware slot index 1.
+        val slotNumber = Regex("\\d+").find(label)?.value?.toIntOrNull()
+        if (slotNumber != null) {
+            simAccounts.find { it.slotIndex == slotNumber - 1 }?.let { return it }
+        }
+        return simAccounts.firstOrNull()
     }
 
     fun rejectCallWithMessage(context: Context, number: String, textMessage: String) {
         val call = _currentCall.value
         // An active ringing call: let the platform decline-with-message on our behalf
-        if (call != null && call.state == Call.STATE_RINGING) {
+        if (call != null && call.safeState == Call.STATE_RINGING) {
             try {
                 call.reject(true, textMessage)
                 Toast.makeText(context, context.getString(R.string.sms_sent), Toast.LENGTH_SHORT).show()
@@ -626,16 +655,20 @@ object CallManager {
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (hasSmsPermission && number.isNotBlank()) {
             try {
-                android.telephony.SmsManager.getDefault().sendTextMessage(
-                    number, null, textMessage, null, null
-                )
+                val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(android.telephony.SmsManager::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    android.telephony.SmsManager.getDefault()
+                }
+                smsManager?.sendTextMessage(number, null, textMessage, null, null)
                 Toast.makeText(context, context.getString(R.string.sms_sent), Toast.LENGTH_SHORT).show()
                 return
             } catch (_: Exception) {} // fall through to the SMS app
         }
 
         try {
-            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number")).apply {
+            val intent = Intent(Intent.ACTION_SENDTO, "smsto:$number".toUri()).apply {
                 putExtra("sms_body", textMessage)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }

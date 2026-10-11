@@ -28,6 +28,7 @@ import android.os.Build
 import android.provider.Settings
 import android.telecom.TelecomManager
 import androidx.activity.result.ActivityResultLauncher
+import androidx.core.net.toUri
 
 object CallScreenPermissionHelper {
 
@@ -55,11 +56,8 @@ object CallScreenPermissionHelper {
     }
 
     fun canDrawOverlays(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(context)
-        } else {
-            true
-        }
+        // minSdk 24 > M (23); the overlay permission check is always available.
+        return Settings.canDrawOverlays(context)
     }
 
     fun canUseFullScreenIntent(context: Context): Boolean {
@@ -71,7 +69,7 @@ object CallScreenPermissionHelper {
         }
     }
 
-    fun getDefaultDialerIntent(context: Context): Intent? {
+    fun getDefaultDialerIntent(context: Context): Intent {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val rm = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
             if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_DIALER)) {
@@ -124,8 +122,7 @@ object CallScreenPermissionHelper {
 
     fun requestDefaultDialer(context: Context, launcher: ActivityResultLauncher<Intent>? = null) {
         val intent = getDefaultDialerIntent(context)
-        if (intent != null) {
-            try {
+        try {
                 if (launcher != null) {
                     launcher.launch(intent)
                     return
@@ -139,8 +136,7 @@ object CallScreenPermissionHelper {
                     context.startActivity(intent)
                     return
                 }
-            } catch (_: Exception) {}
-        }
+        } catch (_: Exception) {}
 
         // Fallback for restricted OEMs (HyperOS, ColorOS, Nothing OS): open Default Apps system settings
         try {
@@ -158,7 +154,7 @@ object CallScreenPermissionHelper {
             try {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:${context.packageName}")
+                    "package:${context.packageName}".toUri()
                 ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                 context.startActivity(intent)
             } catch (_: Exception) {
@@ -179,7 +175,7 @@ object CallScreenPermissionHelper {
             try {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                    Uri.parse("package:${context.packageName}")
+                    "package:${context.packageName}".toUri()
                 ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                 context.startActivity(intent)
                 return

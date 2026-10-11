@@ -18,7 +18,7 @@ class RichHapticEngineTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         assertNotNull(context)
 
-        for (style in RichHapticEngine.HapticStyle.values()) {
+        for (style in RichHapticEngine.HapticStyle.entries) {
             // Must execute gracefully without throwing any runtime exception
             RichHapticEngine.performHaptic(context, style)
         }

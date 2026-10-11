@@ -22,8 +22,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
@@ -32,7 +30,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,6 +44,7 @@ import com.example.ui.theme.getCallGreenColor
 import com.example.ui.theme.getDeclineRedColor
 import com.example.util.RichHapticEngine
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MinimizedCallBanner(
@@ -63,7 +61,7 @@ fun MinimizedCallBanner(
     LaunchedEffect(callState) {
         if (callState == Call.STATE_ACTIVE) {
             while (true) {
-                delay(1000)
+                delay(1000.milliseconds)
                 tickTrigger++
             }
         }

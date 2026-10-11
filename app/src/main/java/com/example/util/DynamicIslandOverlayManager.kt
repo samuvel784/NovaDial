@@ -25,7 +25,6 @@ import android.os.Build
 import android.provider.Settings
 import android.telecom.CallAudioState
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
@@ -43,8 +42,6 @@ import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlin.math.abs
-import kotlin.math.hypot
 
 object DynamicIslandOverlayManager {
     private var overlayComposeView: ComposeView? = null
@@ -60,11 +57,8 @@ object DynamicIslandOverlayManager {
     )
 
     fun canDrawOverlay(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(context)
-        } else {
-            true
-        }
+        // minSdk 24 > M (23); the overlay permission check is always available.
+        return Settings.canDrawOverlays(context)
     }
 
     fun startCallMonitoring(context: Context) {
@@ -129,12 +123,10 @@ object DynamicIslandOverlayManager {
             val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
 
             val density = context.resources.displayMetrics.density
-            val resourceId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-            var statusBarHeight = if (resourceId > 0) {
-                context.resources.getDimensionPixelSize(resourceId)
-            } else {
-                (36 * density).toInt()
-            }
+            // Do not read the private framework dimension "status_bar_height" (Op. discouraged
+            // by lint — it is not part of the public API and breaks resource optimization).
+            // Use a density-based fallback and, on API 30+, refine it with the real insets below.
+            var statusBarHeight = (24 * density).toInt()
 
             // On modern Android (API 30+), ensure we measure the display cutout (camera hole)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

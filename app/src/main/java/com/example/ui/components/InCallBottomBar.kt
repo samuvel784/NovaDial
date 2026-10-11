@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.model.getAvatarShape
 import com.example.ui.theme.*
 import com.example.util.RichHapticEngine
 

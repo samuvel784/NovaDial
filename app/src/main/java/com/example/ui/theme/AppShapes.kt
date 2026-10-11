@@ -34,13 +34,7 @@ enum class ShapeStyle(val key: String) {
     SQUIRCLE("squircle"),
     ROUNDED("rounded"),
     CIRCULAR("circular"),
-    SQUARE("square");
-
-    companion object {
-        fun fromKey(key: String): ShapeStyle {
-            return entries.find { it.key.equals(key, ignoreCase = true) } ?: SQUIRCLE // Default to SQUIRCLE, never circular!
-        }
-    }
+    SQUARE("square")
 }
 
 /**

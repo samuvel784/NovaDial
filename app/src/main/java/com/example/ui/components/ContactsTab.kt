@@ -17,48 +17,61 @@
 
 package com.example.ui.components
 
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.R
 import com.example.model.Contact
+import com.example.model.getInitials
+import com.example.ui.theme.AppShapes
+import com.example.ui.theme.LocalAmoledMode
 import com.example.ui.viewmodel.DialerViewModel
+import com.example.util.RichHapticEngine
 import kotlinx.coroutines.launch
 import java.util.Locale
+
+/** Distinct box designs per page so Home and Favorites don't look identical. */
+enum class ContactCardStyle { HOME, FAVORITES }
 
 @Composable
 fun ContactsTabContent(
     viewModel: DialerViewModel,
-    contactsPaged: LazyPagingItems<Contact>,
     favoriteContacts: List<Contact>,
     onCallClick: (Contact) -> Unit,
     onAddContactClick: () -> Unit,
@@ -68,33 +81,42 @@ fun ContactsTabContent(
     onRequestPermission: () -> Unit = {},
     onEditContact: (Contact) -> Unit = {},
     onDeleteContact: (Contact) -> Unit = {},
-    startWithFavoritesOnly: Boolean = false
+    startWithFavoritesOnly: Boolean = false,
+    cardStyle: ContactCardStyle = ContactCardStyle.HOME
 ) {
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
 
-    val allContacts by viewModel.allContactsFlow.collectAsState()
+    val allContacts by viewModel.allContactsFlow.collectAsStateWithLifecycle()
     val selectedAccountFilter by viewModel.selectedAccountFilter
-    var showOnlyFavorites by remember { mutableStateOf(startWithFavoritesOnly) }
-    val sortedFavorites = remember(favoriteContacts) { favoriteContacts.sortedBy { it.name.uppercase(Locale.ROOT) } }
+    val searchQuery by viewModel.searchQuery
 
-    // Unified contacts pipeline eliminates duplicate filtering
-    val activeContactsList = remember(allContacts, showOnlyFavorites, sortedFavorites, selectedAccountFilter) {
-        if (showOnlyFavorites) {
-            sortedFavorites
-        } else if (selectedAccountFilter.isBlank()) {
-            allContacts
-        } else if (selectedAccountFilter.equals("Phone", ignoreCase = true)) {
-            allContacts.filter {
+    // Base list depends on the mode (favorites-only vs all), respecting the account filter.
+    val baseContacts = remember(startWithFavoritesOnly, favoriteContacts, allContacts, selectedAccountFilter) {
+        when {
+            startWithFavoritesOnly -> favoriteContacts.sortedBy { it.name.uppercase(Locale.ROOT) }
+            selectedAccountFilter.isBlank() -> allContacts
+            selectedAccountFilter.equals("Phone", ignoreCase = true) -> allContacts.filter {
                 it.accountName.isBlank() || it.accountName.equals("Phone", ignoreCase = true) || it.accountType.contains("local", ignoreCase = true)
             }
-        } else {
-            allContacts.filter { it.accountName == selectedAccountFilter }
+            else -> allContacts.filter { it.accountName == selectedAccountFilter }
         }
     }
 
-    val alphabet = remember(activeContactsList) {
-        val uniqueLetters = activeContactsList.asSequence()
+    // Apply the shared header search to the visible list.
+    val contacts = remember(baseContacts, searchQuery) {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) {
+            baseContacts
+        } else {
+            baseContacts.filter {
+                it.name.contains(query, ignoreCase = true) || it.number.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    val alphabet = remember(contacts) {
+        val uniqueLetters = contacts.asSequence()
             .map { it.name.trim() }
             .filter { it.isNotEmpty() }
             .map { it.first().uppercaseChar() }
@@ -113,11 +135,10 @@ fun ContactsTabContent(
         if (result.size <= 1) ('A'..'Z').toList() + '#' else result
     }
 
-    val letterToIndex = remember(activeContactsList) {
+    val letterToIndex = remember(contacts) {
         val map = HashMap<Char, Int>()
-        for (i in activeContactsList.indices) {
-            val contact = activeContactsList[i]
-            val firstChar = contact.name.trim().firstOrNull()?.uppercaseChar() ?: '#'
+        for (i in contacts.indices) {
+            val firstChar = contacts[i].name.trim().firstOrNull()?.uppercaseChar() ?: '#'
             val key = if (firstChar.isLetter()) firstChar else '#'
             if (!map.containsKey(key)) {
                 map[key] = i
@@ -126,26 +147,14 @@ fun ContactsTabContent(
         map
     }
 
-    val activeLetter = remember(listState, alphabet, showOnlyFavorites, sortedFavorites, contactsPaged) {
+    val activeLetter = remember(gridState, alphabet, contacts) {
         derivedStateOf {
-            val firstVisibleIndex = listState.firstVisibleItemIndex
-            if (showOnlyFavorites) {
-                if (firstVisibleIndex < sortedFavorites.size) {
-                    val contact = sortedFavorites.getOrNull(firstVisibleIndex)
-                    val firstChar = contact?.name?.trim()?.firstOrNull()?.uppercaseChar() ?: '#'
-                    if (alphabet.contains(firstChar)) firstChar else if (!firstChar.isLetter() && alphabet.contains('#')) '#' else alphabet.firstOrNull() ?: '#'
-                } else {
-                    alphabet.firstOrNull() ?: '#'
-                }
-            } else {
-                if (firstVisibleIndex < contactsPaged.itemCount) {
-                    val contact = contactsPaged.peek(firstVisibleIndex)
-                    val firstChar = contact?.name?.trim()?.firstOrNull()?.uppercaseChar() ?: '#'
-                    if (alphabet.contains(firstChar)) firstChar else if (!firstChar.isLetter() && alphabet.contains('#')) '#' else alphabet.firstOrNull() ?: '#'
-                } else {
-                    alphabet.firstOrNull() ?: '#'
-                }
-            }
+            val firstVisibleIndex = gridState.firstVisibleItemIndex
+            val contact = contacts.getOrNull(firstVisibleIndex)
+            val firstChar = contact?.name?.trim()?.firstOrNull()?.uppercaseChar() ?: '#'
+            if (alphabet.contains(firstChar)) firstChar
+            else if (!firstChar.isLetter() && alphabet.contains('#')) '#'
+            else alphabet.firstOrNull() ?: '#'
         }
     }
 
@@ -197,31 +206,9 @@ fun ContactsTabContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { showOnlyFavorites = !showOnlyFavorites },
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (showOnlyFavorites) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            contentColor = if (showOnlyFavorites) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.testTag("favorites_toggle_fab")
-                    ) {
-                        Icon(
-                            imageVector = if (showOnlyFavorites) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = stringResource(R.string.tab_favorites),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.tab_favorites),
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-
                     Button(
                         onClick = onAddContactClick,
                         shape = RoundedCornerShape(16.dp),
@@ -240,7 +227,6 @@ fun ContactsTabContent(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                // FIXED: Fully localized Add action string
                                 text = stringResource(R.string.action_add_contact),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold
@@ -250,10 +236,16 @@ fun ContactsTabContent(
                 }
             }
 
-            val listItemsCount = if (showOnlyFavorites) sortedFavorites.size else contactsPaged.itemCount
-            val isRefreshNotLoading = contactsPaged.loadState.refresh is LoadState.NotLoading
-
-            if (listItemsCount == 0 && (showOnlyFavorites || (!showOnlyFavorites && isRefreshNotLoading))) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                }
+            } else if (contacts.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -261,93 +253,43 @@ fun ContactsTabContent(
                     contentAlignment = Alignment.Center
                 ) {
                     EmptyStateIllustration(
-                        title = if (showOnlyFavorites) stringResource(R.string.no_favorites_title) else stringResource(R.string.no_contacts_title),
-                        subtitle = if (showOnlyFavorites) stringResource(R.string.no_favorites_subtitle) else stringResource(R.string.no_contacts_subtitle)
+                        title = if (startWithFavoritesOnly) stringResource(R.string.no_favorites_title) else stringResource(R.string.no_contacts_title),
+                        subtitle = if (startWithFavoritesOnly) stringResource(R.string.no_favorites_subtitle) else stringResource(R.string.no_contacts_subtitle)
                     )
                 }
             } else {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxSize().padding(end = 36.dp)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(if (cardStyle == ContactCardStyle.FAVORITES) 2 else 1),
+                    state = gridState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 128.dp)
                 ) {
-                    if (showOnlyFavorites) {
-                        // FIXED: itemsIndexed eliminates O(N^2) indexOf lookup on every scroll frame
-                        itemsIndexed(
-                            items = sortedFavorites,
-                            key = { _, contact -> "${contact.id}_${contact.number}" }
-                        ) { index, contact ->
-                            val firstLetter = contact.name.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
-                            val prevContact = if (index > 0) sortedFavorites[index - 1] else null
-                            val prevLetter = prevContact?.name?.firstOrNull()?.uppercaseChar()?.toString() ?: ""
-
-                            if (firstLetter != prevLetter) {
-                                Text(
-                                    text = firstLetter,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
-                                )
-                            }
-                            ContactRow(
-                                contact = contact,
-                                onCallClick = onCallClick,
-                                onToggleFavorite = onToggleFavorite,
-                                onEditContact = onEditContact,
-                                onDeleteContact = onDeleteContact,
-                                viewModel = viewModel
-                            )
-                        }
-                    } else {
-                        items(
-                            count = contactsPaged.itemCount,
-                            key = contactsPaged.itemKey { "${it.id}_${it.number}" },
-                            contentType = contactsPaged.itemContentType { "contact" }
-                        ) { index ->
-                            val contact = contactsPaged[index]
-                            if (contact != null) {
-                                val firstLetter = contact.name.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
-                                val prevContact = if (index > 0) contactsPaged[index - 1] else null
-                                val prevLetter = prevContact?.name?.firstOrNull()?.uppercaseChar()?.toString() ?: ""
-
-                                if (firstLetter != prevLetter) {
-                                    Text(
-                                        text = firstLetter,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
-                                    )
-                                }
-                                ContactRow(
-                                    contact = contact,
-                                    onCallClick = onCallClick,
-                                    onToggleFavorite = onToggleFavorite,
-                                    onEditContact = onEditContact,
-                                    onDeleteContact = onDeleteContact,
-                                    viewModel = viewModel
-                                )
-                            }
-                        }
-                    }
-
-                    if (!showOnlyFavorites && contactsPaged.loadState.append is LoadState.Loading) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            }
-                        }
+                    items(
+                        items = contacts,
+                        key = { "${it.id}_${it.number}" }
+                    ) { contact ->
+                        ContactBoxCard(
+                            contact = contact,
+                            style = cardStyle,
+                            viewModel = viewModel,
+                            onCall = onCallClick,
+                            onToggleFavorite = onToggleFavorite,
+                            onEditContact = onEditContact,
+                            onDeleteContact = onDeleteContact
+                        )
                     }
                 }
             }
         }
 
         // A-Z Scroller Rail
-        val hasItems = if (showOnlyFavorites) sortedFavorites.isNotEmpty() else contactsPaged.itemCount > 0
-        if (hasItems) {
+        if (hasPermission && !isLoading && contacts.isNotEmpty()) {
             val haptic = LocalHapticFeedback.current
-            val maxScrollTarget = (if (showOnlyFavorites) sortedFavorites.size else contactsPaged.itemCount) - 1
+            val maxScrollTarget = contacts.size - 1
 
             Column(
                 modifier = Modifier
@@ -362,7 +304,7 @@ fun ContactsTabContent(
                             letterToIndex[char]?.let { targetIndex ->
                                 val safeIndex = targetIndex.coerceIn(0, maxScrollTarget.coerceAtLeast(0))
                                 coroutineScope.launch {
-                                    listState.animateScrollToItem(safeIndex)
+                                    gridState.animateScrollToItem(safeIndex)
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }
                             }
@@ -375,7 +317,7 @@ fun ContactsTabContent(
                             letterToIndex[char]?.let { targetIndex ->
                                 val safeIndex = targetIndex.coerceIn(0, maxScrollTarget.coerceAtLeast(0))
                                 coroutineScope.launch {
-                                    listState.scrollToItem(safeIndex)
+                                    gridState.scrollToItem(safeIndex)
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 }
                             }
@@ -404,6 +346,203 @@ fun ContactsTabContent(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A single contact "box". Tapping opens the full [ContactProfileSheet] (numbers, message,
+ * favourite, edit, share, copy, block, delete); the trailing call button on the Home layout
+ * dials the primary number directly.
+ *
+ * [ContactCardStyle.HOME] lays the avatar left (wide box); [ContactCardStyle.FAVORITES]
+ * centres the avatar on top with a gold star so the page looks distinct.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ContactBoxCard(
+    contact: Contact,
+    style: ContactCardStyle,
+    viewModel: DialerViewModel,
+    onCall: (Contact) -> Unit,
+    onToggleFavorite: (Contact) -> Unit,
+    onEditContact: (Contact) -> Unit,
+    onDeleteContact: (Contact) -> Unit
+) {
+    val context = LocalContext.current
+    var showProfile by remember { mutableStateOf(false) }
+    val isAmoled = LocalAmoledMode.current
+
+    val numbers = remember(contact) { contact.getAllNumbers() }
+    val primaryNumber = numbers.firstOrNull()?.number ?: contact.number
+    val primaryLabel = numbers.firstOrNull()?.label ?: contact.label
+
+    val isFavorites = style == ContactCardStyle.FAVORITES
+    val containerColor = when {
+        isAmoled -> Color(0xFF141414)
+        isFavorites -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+    val shape = if (isFavorites) RoundedCornerShape(26.dp) else RoundedCornerShape(18.dp)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = if (isAmoled) BorderStroke(1.dp, Color(0xFF1C1C1C)) else null
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {
+                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                        showProfile = true
+                    },
+                    onLongClick = {
+                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.HEAVY_CLICK)
+                        showProfile = true
+                    }
+                )
+                .padding(start = 12.dp, end = if (isFavorites) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp)
+        ) {
+            if (isFavorites) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    ContactBoxAvatar(contact = contact, size = 56.dp, showStar = true)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = contact.name.ifBlank { contact.number },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = contact.number,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ContactBoxAvatar(contact = contact, size = 46.dp, showStar = contact.favorite)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = contact.name.ifBlank { contact.number },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = contact.number,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                            onCall(contact.copy(number = primaryNumber, label = primaryLabel))
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = stringResource(R.string.action_call),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showProfile) {
+        ContactProfileSheet(
+            contact = contact,
+            viewModel = viewModel,
+            onCall = onCall,
+            onToggleFavorite = onToggleFavorite,
+            onEditContact = onEditContact,
+            onDeleteContact = onDeleteContact,
+            onDismiss = { showProfile = false }
+        )
+    }
+}
+
+@Composable
+internal fun ContactBoxAvatar(
+    contact: Contact,
+    size: androidx.compose.ui.unit.Dp,
+    showStar: Boolean
+) {
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(AppShapes.Avatar)
+                .background(contact.avatarBg),
+            contentAlignment = Alignment.Center
+        ) {
+            if (contact.photoUri.isNotEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(contact.photoUri)
+                        .size(128, 128)
+                        .crossfade(false)
+                        .build(),
+                    contentDescription = contact.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                val isSaved = contact.name.isNotBlank() && contact.name != contact.number && contact.name != "Unknown"
+                if (isSaved) {
+                    Text(
+                        text = contact.avatarText.ifEmpty { getInitials(contact.name) },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = contact.avatarTextColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = contact.avatarTextColor,
+                        modifier = Modifier.size(size / 2)
+                    )
+                }
+            }
+        }
+        if (showStar) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFEAB308),
+                    modifier = Modifier.size(15.dp)
+                )
             }
         }
     }

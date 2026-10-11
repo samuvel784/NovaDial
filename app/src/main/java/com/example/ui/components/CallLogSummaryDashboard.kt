@@ -18,13 +18,12 @@
 package com.example.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -70,8 +69,8 @@ fun SummaryTimeRange.getLabel(): String {
 @Composable
 fun CallLogSummaryDashboard(
     callRecords: List<CallRecord>,
-    dashboardMode: String = "FULL",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dashboardMode: String = "FULL"
 ) {
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(true) }
@@ -123,6 +122,16 @@ fun CallLogSummaryDashboard(
             mins > 0 -> "${mins}m"
             else -> "${secs}s"
         }
+    }
+
+    val busiestDayLabel = remember(filteredRecords, context) {
+        val fmt = SimpleDateFormat("EEE", getCurrentLocale(context))
+        filteredRecords
+            .filter { it.timestampMs > 0L }
+            .groupBy { fmt.format(Date(it.timestampMs)) }
+            .maxByOrNull { entry -> entry.value.size }
+            ?.key
+            ?: "—"
     }
 
     val isExpressive = LocalM3Expressive.current
@@ -250,7 +259,7 @@ fun CallLogSummaryDashboard(
                         SummaryBox(
                             value = missedCallsCount.toString(),
                             label = stringResource(R.string.filter_missed),
-                            icon = Icons.Default.CallMissed,
+                            icon = Icons.AutoMirrored.Filled.CallMissed,
                             iconColor = getMissedCallColor(),
                             modifier = Modifier.weight(1f)
                         )
@@ -304,6 +313,55 @@ fun CallLogSummaryDashboard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = stringResource(R.string.summary_chart_distribution),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                        )
+                        CallTypeDonutChart(
+                            missed = missedCallsCount,
+                            outgoing = outgoingCallsCount,
+                            received = receivedCallsCount
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = stringResource(R.string.summary_chart_activity),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                        )
+                        WeeklyActivityChart(records = filteredRecords)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            DetailStat(
+                                label = stringResource(R.string.summary_avg_duration),
+                                value = if (totalCallsCount > 0) {
+                                    val avg = totalDurationSeconds / totalCallsCount
+                                    if (avg >= 60) "${avg / 60}m ${avg % 60}s" else "${avg}s"
+                                } else {
+                                    "—"
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            DetailStat(
+                                label = stringResource(R.string.summary_busiest_day),
+                                value = busiestDayLabel,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }

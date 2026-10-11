@@ -17,20 +17,19 @@
 
 package com.example.ui.components
 
-import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -55,7 +53,6 @@ import com.example.model.CallRecord
 import com.example.model.CallRecording
 import com.example.model.CallType
 import com.example.model.Contact
-import com.example.model.getAvatarShape
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.MultiSimManager
@@ -63,8 +60,9 @@ import com.example.util.RichHapticEngine
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
+import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentCallRow(
     group: CallGroup,
@@ -167,7 +165,7 @@ fun RecentCallRow(
                                 horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
                                 val (icon, iconColor) = when (record.type) {
-                                    CallType.MISSED -> Icons.Default.CallMissed to getMissedCallColor()
+                                    CallType.MISSED -> Icons.AutoMirrored.Filled.CallMissed to getMissedCallColor()
                                     CallType.OUTGOING -> Icons.AutoMirrored.Filled.CallMade to getDialedCallColor()
                                     CallType.INCOMING -> Icons.AutoMirrored.Filled.CallReceived to getReceivedCallColor()
                                 }
@@ -388,14 +386,14 @@ fun RecentCallRow(
                             val isContact = record.name != record.number
 
                             DetailActionItem(
-                                icon = Icons.Default.Message,
+                                icon = Icons.AutoMirrored.Filled.Message,
                                 label = stringResource(R.string.send_sms),
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                 onClick = {
                                     try {
                                         val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                            data = Uri.parse("smsto:${record.number}")
+                                            data = "smsto:${record.number}".toUri()
                                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                         }
                                         context.startActivity(intent)
@@ -510,7 +508,7 @@ fun RecentCallRow(
                     SwipeToDismissBoxValue.EndToStart -> {
                         RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.CLICK)
                         try {
-                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${record.number}")).apply {
+                            val intent = Intent(Intent.ACTION_SENDTO, "smsto:${record.number}".toUri()).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             }
                             context.startActivity(intent)
@@ -568,38 +566,6 @@ fun RecentCallRow(
             recordings = matchingRecordings,
             onDismiss = { showPlaybackDialog = false },
             viewModel = viewModel
-        )
-    }
-}
-
-@Composable
-fun RecentActionItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    tint: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(AppShapes.Small)
-            .clickable(onClick = onClick)
-            .padding(8.dp)
-            .width(64.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = tint,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -670,7 +636,7 @@ fun DirectRecordingPlayerDialog(
 
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
-            delay(100)
+            delay(100.milliseconds)
             mediaPlayer?.let { mp ->
                 try {
                     if (mp.isPlaying) {

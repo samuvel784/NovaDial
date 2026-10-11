@@ -47,6 +47,7 @@ object CallAudioHelper {
      * Prepares speakerphone and volume level at the 55% sweet spot for recording.
      */
     @Synchronized
+    @Suppress("DEPRECATION") // InCallService.setAudioRoute; requestCallEndpointChange needs API 34+
     fun prepareSpeakerForRecording(
         context: Context,
         inCallService: InCallService?,
@@ -93,6 +94,7 @@ object CallAudioHelper {
      * Restores the user's previous volume and audio route (Bluetooth, Headset, or Earpiece).
      */
     @Synchronized
+    @Suppress("DEPRECATION") // InCallService.setAudioRoute; requestCallEndpointChange needs API 34+
     fun restoreAudioState(context: Context, inCallService: InCallService?) {
         if (!didAdjustAudio) return
         try {

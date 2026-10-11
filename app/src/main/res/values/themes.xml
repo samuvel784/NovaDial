@@ -2,4 +2,7 @@
 <resources>
 
     <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+
+    <!-- Invisible, non-exported activity used by the favourites widget to place a call -->
+    <style name="Theme.MyApplication.Translucent" parent="android:Theme.Translucent.NoTitleBar" />
 </resources>

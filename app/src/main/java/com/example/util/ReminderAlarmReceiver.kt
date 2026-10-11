@@ -23,7 +23,6 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
@@ -33,6 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.milliseconds
 
 class ReminderAlarmReceiver : BroadcastReceiver() {
 
@@ -50,7 +51,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // ANR GUARD: Ensure DB operations never exceed the OS BroadcastReceiver execution budget
-                withTimeoutOrNull(8000L) {
+                withTimeoutOrNull(8000.milliseconds) {
                     val db = AppDatabase.getDatabase(appContext)
                     val reminder = db.dialerDao().getAllRemindersList().find { it.id == reminderId } ?: return@withTimeoutOrNull
 
@@ -83,7 +84,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                         appContext,
                         reminderId + 100000,
                         Intent(Intent.ACTION_DIAL).apply {
-                            data = Uri.parse("tel:${reminder.number}")
+                            data = "tel:${reminder.number}".toUri()
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         },
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT

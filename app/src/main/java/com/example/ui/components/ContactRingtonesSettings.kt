@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,13 @@ import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
 import android.os.Vibrator
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.IntentCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,6 +54,7 @@ import com.example.ui.theme.AppShapes
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.ContactRingtonePrefs
 import com.example.util.RichHapticEngine
+import androidx.core.net.toUri
 
 /**
  * Per-contact ringtone and vibration assignments. Assignments are used by the
@@ -100,13 +104,20 @@ fun ContactRingtonesSettings(
             try {
                 val vibrator = context.getSystemService(Vibrator::class.java)
                 ContactRingtonePrefs.patternTimings(a.pattern)?.let { timings ->
-                    if (timings.size > 1) vibrator?.vibrate(timings, -1)
+                    if (timings.size > 1) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            vibrator?.vibrate(VibrationEffect.createWaveform(timings, -1))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            vibrator?.vibrate(timings, -1)
+                        }
+                    }
                 }
             } catch (_: Exception) {}
         }
         if (a.ringtoneUri.isNotBlank()) {
             try {
-                previewRingtone.value = RingtoneManager.getRingtone(context, Uri.parse(a.ringtoneUri))?.apply { play() }
+                previewRingtone.value = RingtoneManager.getRingtone(context, a.ringtoneUri.toUri())?.apply { play() }
             } catch (_: Exception) {}
         }
     }
@@ -117,7 +128,9 @@ fun ContactRingtonesSettings(
         val number = pendingNumber
         if (number != null) {
             refreshMappings()
-            val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            val uri = result.data?.let {
+                IntentCompat.getParcelableExtra(it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+            }
             if (uri != null) {
                 val existing = mappings[number]
                 ContactRingtonePrefs.set(context, number, uri.toString(), existing?.pattern ?: ContactRingtonePrefs.PATTERN_DEFAULT)
@@ -133,7 +146,7 @@ fun ContactRingtonesSettings(
 
     fun launchRingtonePicker(number: String) {
         pendingNumber = number
-        val existing = mappings[number]?.ringtoneUri?.let { Uri.parse(it) }
+        val existing = mappings[number]?.ringtoneUri?.let { it.toUri() }
         val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
             putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.ringtone_pick))
             if (existing != null) putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existing)
@@ -182,7 +195,7 @@ fun ContactRingtonesSettings(
                 val assignment = mappings[contact.number.trim()]
                 val ringtoneTitle: String? = remember(assignment) {
                     if (assignment == null || assignment.ringtoneUri.isBlank()) null
-                    else runCatching { RingtoneManager.getRingtone(context, Uri.parse(assignment.ringtoneUri))?.getTitle(context) }
+                    else runCatching { RingtoneManager.getRingtone(context, assignment.ringtoneUri.toUri())?.getTitle(context) }
                         .getOrNull()
                         ?: context.getString(R.string.ringtone_pick)
                 }

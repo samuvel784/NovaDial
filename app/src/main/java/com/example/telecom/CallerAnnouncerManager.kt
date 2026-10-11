@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -30,7 +30,7 @@ import java.util.concurrent.Executors
  *  - It never changes the ring volume.
  * All work is posted to the main thread, so no locking is needed.
  */
-class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInitListener {
+class CallerAnnouncerManager(context: Context) : TextToSpeech.OnInitListener {
 
     private val appContext = context.applicationContext
     private val handler = Handler(Looper.getMainLooper())
@@ -38,6 +38,9 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
 
     private var tts: TextToSpeech? = null
     private var isInitialized = false
+
+    /** True when the engine provided a gendered voice for the current preference (so pitch is left alone). */
+    private var genderVoiceSelected = false
 
     private var requestId = 0
     private var script: List<AnnouncerScript.Line> = emptyList()
@@ -67,6 +70,7 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
+            genderVoiceSelected = applyVoicePreference(engine)
             isInitialized = true
             // a call may have started while the engine was loading
             if (script.isNotEmpty()) scheduleScript(requestId)
@@ -135,8 +139,11 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
         val engine = tts ?: return
         cancelScheduled()
 
+        // Re-read the voice each time so a change in Settings takes effect immediately.
+        genderVoiceSelected = applyVoicePreference(engine)
         engine.setSpeechRate(CallProtectionPrefs.getAnnouncerSpeedPercent(appContext) / 100f)
-        engine.setPitch(CallProtectionPrefs.getAnnouncerPitchPercent(appContext) / 100f)
+        val basePitch = CallProtectionPrefs.getAnnouncerPitchPercent(appContext) / 100f
+        engine.setPitch(basePitch * (if (genderVoiceSelected) 1f else genderPitchFactor()))
 
         script.forEach { line ->
             val runnable = Runnable { if (myRequest == requestId) speak(line.text) }
@@ -159,6 +166,55 @@ class CallerAnnouncerManager(private val context: Context) : TextToSpeech.OnInit
             )
         }
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, "novadial_announcement")
+    }
+
+    /**
+     * Tries to apply the requested gender voice. Returns true when a matching
+     * installed voice was found and set (so no extra pitch shift is needed).
+     */
+    private fun applyVoicePreference(engine: TextToSpeech): Boolean {
+        return try {
+            when (CallProtectionPrefs.getAnnouncerVoice(appContext)) {
+                CallProtectionPrefs.AnnouncerVoice.DEFAULT -> {
+                    try { engine.voice = engine.defaultVoice } catch (_: Exception) {}
+                    false
+                }
+                CallProtectionPrefs.AnnouncerVoice.MALE -> selectGenderedVoice(engine, wantFemale = false)
+                CallProtectionPrefs.AnnouncerVoice.FEMALE -> selectGenderedVoice(engine, wantFemale = true)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not apply announcer voice", e)
+            false
+        }
+    }
+
+    /**
+     * Picks the first installed voice that looks like the requested gender.
+     * Android exposes no gender field, so this reads the voice name. Many engines
+     * include "male"/"female" fragments (e.g. "...-sfg#male_1-local").
+     */
+    private fun selectGenderedVoice(engine: TextToSpeech, wantFemale: Boolean): Boolean {
+        val voices = try { engine.voices } catch (e: Exception) { null } ?: return false
+        val chosen = voices.firstOrNull { voice ->
+            val name = voice.name.lowercase(Locale.ROOT)
+            val hasFemale = name.contains("female")
+            val hasMale = name.contains("male") && !hasFemale
+            if (wantFemale) hasFemale else hasMale
+        } ?: return false
+        return try {
+            engine.voice = chosen
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not select gendered voice", e)
+            false
+        }
+    }
+
+    /** Pitch offset used to approximate a male/female voice when the engine has no gendered voice. */
+    private fun genderPitchFactor(): Float = when (CallProtectionPrefs.getAnnouncerVoice(appContext)) {
+        CallProtectionPrefs.AnnouncerVoice.MALE -> 0.80f
+        CallProtectionPrefs.AnnouncerVoice.FEMALE -> 1.20f
+        CallProtectionPrefs.AnnouncerVoice.DEFAULT -> 1f
     }
 
     /** Stops speaking right away. Called when the call is answered, rejected or ends. */

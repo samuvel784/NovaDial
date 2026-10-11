@@ -38,6 +38,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -78,7 +79,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testBlankPhoneNumberDefaultsToUnknown`() {
+    fun testBlankPhoneNumberDefaultsToUnknown() {
         runBlocking {
             val blankNumber = "   "
             val started = CallAudioRecorder.startRecording(context, blankNumber)
@@ -92,7 +93,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testEmptyOrDefectiveRecordingFileAutoDeletion`() {
+    fun testEmptyOrDefectiveRecordingFileAutoDeletion() {
         runBlocking {
             val started = CallAudioRecorder.startRecording(context, "5550001")
             assertTrue(started)
@@ -115,7 +116,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testValidRecordingFileRetention`() {
+    fun testValidRecordingFileRetention() {
         runBlocking {
             val started = CallAudioRecorder.startRecording(context, "5559999")
             assertTrue(started)
@@ -139,7 +140,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testPreventDoubleStart`() {
+    fun testPreventDoubleStart() {
         val firstStart = CallAudioRecorder.startRecording(context, "12345")
         assertTrue(firstStart)
         assertTrue(CallAudioRecorder.isRecording.value)
@@ -152,7 +153,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testRecordingFeedbackHelperToneAndHaptics`() {
+    fun testRecordingFeedbackHelperToneAndHaptics() {
         // Verify start feedback with chime enabled and disabled
         RecordingFeedbackHelper.triggerRecordingStartFeedback(context, chimeEnabled = true)
         RecordingFeedbackHelper.triggerRecordingStartFeedback(context, chimeEnabled = false)
@@ -167,7 +168,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testRecordingDatabaseCrudOperations`() {
+    fun testRecordingDatabaseCrudOperations() {
         runBlocking {
             val dao = database.dialerDao()
 
@@ -206,7 +207,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testDialerViewModelRecordingSettingsSyncAndPersistence`() {
+    fun testDialerViewModelRecordingSettingsSyncAndPersistence() {
         val viewModel = DialerViewModel(context)
 
         // Set recording preferences
@@ -238,7 +239,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testDefaultStealthRecordingChimeDisabled`() {
+    fun testDefaultStealthRecordingChimeDisabled() {
         val freshContext = ApplicationProvider.getApplicationContext<android.app.Application>()
         val freshPrefs = freshContext.getSharedPreferences("dialer_prefs", Context.MODE_PRIVATE)
         freshPrefs.edit().remove("recording_chime_enabled").commit()
@@ -249,7 +250,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testNotificationQuickActionsConstants`() {
+    fun testNotificationQuickActionsConstants() {
         assertEquals("com.example.ACTION_HANG_UP", MyInCallService.ACTION_HANG_UP)
         assertEquals("com.example.ACTION_ANSWER", MyInCallService.ACTION_ANSWER)
         assertEquals("com.example.ACTION_DECLINE", MyInCallService.ACTION_DECLINE)
@@ -259,7 +260,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testExportRecordingToDownloadsSafety`() {
+    fun testExportRecordingToDownloadsSafety() {
         // Non-existent file path should be safely handled without throwing exception
         exportRecordingToDownloads(context, "/non/existent/path/audio.m4a")
 
@@ -275,7 +276,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testRecordingsBiometricLockDefaultDisabled`() {
+    fun testRecordingsBiometricLockDefaultDisabled() {
         val freshContext = ApplicationProvider.getApplicationContext<android.app.Application>()
         val freshPrefs = freshContext.getSharedPreferences("dialer_prefs", Context.MODE_PRIVATE)
         freshPrefs.edit().remove("is_recordings_biometric_lock_enabled").commit()
@@ -285,7 +286,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testRecordingsBiometricLockToggleAndPersistence`() {
+    fun testRecordingsBiometricLockToggleAndPersistence() {
         val viewModel = DialerViewModel(context)
         viewModel.updateRecordingsBiometricLockEnabled(true)
         assertTrue(viewModel.isRecordingsBiometricLockEnabled.value)
@@ -303,8 +304,8 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testVaultBiometricAuthHelperGracefulFallback`() {
-        val activity = Robolectric.setupActivity(android.app.Activity::class.java)
+    fun testVaultBiometricAuthHelperGracefulFallback() {
+        val activity = Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
         var successCalled = false
 
         com.example.util.VaultBiometricAuthHelper.authenticate(
@@ -320,7 +321,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testIdempotentDoubleStopRecordingReturnsCachedResult`() {
+    fun testIdempotentDoubleStopRecordingReturnsCachedResult() {
         runBlocking {
             val started = CallAudioRecorder.startRecording(context, "5557788")
             assertTrue(started)
@@ -345,7 +346,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testDatabaseSaveDecoupledFromInCallService`() {
+    fun testDatabaseSaveDecoupledFromInCallService() {
         runBlocking {
             CallManager.appContext = context
             CallManager.inCallService = null // inCallService is null (simulating teardown)
@@ -360,7 +361,7 @@ class CallRecordingComprehensiveTest {
 
             // When autoStopRecordingIfNeeded executes with inCallService = null, appContext allows Room DB insert
             val job = CallManager.autoStopRecordingIfNeeded()
-            job?.join() ?: kotlinx.coroutines.delay(200)
+            job?.join() ?: kotlinx.coroutines.delay(200.milliseconds)
 
             val dao = database.dialerDao()
             val recordings = dao.getAllCallRecordingsFlow().first()
@@ -372,7 +373,7 @@ class CallRecordingComprehensiveTest {
     }
 
     @Test
-    fun `testSelfHealingDiskRecoveryInsertsOrphanedFiles`() {
+    fun testSelfHealingDiskRecoveryInsertsOrphanedFiles() {
         runBlocking {
             val recordDir = File(context.filesDir, "CallRecordings").apply { mkdirs() }
             val orphanFile = File(recordDir, "REC_15559876543_20260925_120000.m4a").apply {
@@ -383,7 +384,7 @@ class CallRecordingComprehensiveTest {
             viewModel.syncRecordingsFromDisk(context)
 
             // Allow IO dispatcher to complete
-            kotlinx.coroutines.delay(200)
+            kotlinx.coroutines.delay(200.milliseconds)
 
             val dao = database.dialerDao()
             val recordings = dao.getAllCallRecordingsFlow().first()

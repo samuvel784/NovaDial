@@ -19,7 +19,7 @@ package com.example.ui.components
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -40,6 +40,7 @@ import com.example.R
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
 import com.example.util.VaultBiometricAuthHelper
+import androidx.core.net.toUri
 
 @Composable
 fun PrivacySecurityAboutSettings(
@@ -83,14 +84,18 @@ fun PrivacySecurityAboutSettings(
                     onCheckedChange = { enabled ->
                         RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                         if (enabled && activity != null) {
-                            VaultBiometricAuthHelper.authenticate(
-                                activity = activity,
-                                title = context.getString(R.string.settings_biometric_lock),
-                                subtitle = context.getString(R.string.settings_biometric_lock_sub),
-                                onSuccess = {
-                                    viewModel.updateBiometricLockEnabled(true)
-                                }
-                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                VaultBiometricAuthHelper.authenticate(
+                                    activity = activity,
+                                    title = context.getString(R.string.settings_biometric_lock),
+                                    subtitle = context.getString(R.string.settings_biometric_lock_sub),
+                                    onSuccess = {
+                                        viewModel.updateBiometricLockEnabled(true)
+                                    }
+                                )
+                            } else {
+                                viewModel.updateBiometricLockEnabled(true)
+                            }
                         } else {
                             viewModel.updateBiometricLockEnabled(enabled)
                         }
@@ -202,7 +207,7 @@ fun PrivacySecurityAboutSettings(
                     title = stringResource(R.string.settings_contribute_github),
                     subtitle = stringResource(R.string.settings_support_desc),
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com")).apply {
+                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com".toUri()).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         try { context.startActivity(intent) } catch (_: Exception) {}

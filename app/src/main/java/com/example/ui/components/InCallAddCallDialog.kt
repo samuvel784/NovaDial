@@ -57,9 +57,7 @@ fun InCallAddCallDialog(
                     val targetNum = addCallNumberInput.trim()
                     if (targetNum.isNotBlank()) {
                         RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.SUCCESS)
-                        val finalName = if (selectedAddCallContactName.isNotBlank()) {
-                            selectedAddCallContactName
-                        } else {
+                        val finalName = selectedAddCallContactName.ifBlank {
                             contacts.find { it.number == targetNum }?.name ?: targetNum
                         }
                         onAddCall(finalName, targetNum)

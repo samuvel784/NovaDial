@@ -55,9 +55,10 @@ import com.example.util.RichHapticEngine
 @Composable
 fun SettingsPanel(
     viewModel: DialerViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    initialTab: Int = 0
 ) {
-    var activeTab by remember { mutableIntStateOf(0) }
+    var activeTab by remember { mutableIntStateOf(initialTab) }
     var highlightedTitle by remember { mutableStateOf<String?>(null) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
@@ -101,6 +102,7 @@ fun SettingsPanel(
                             10 -> stringResource(R.string.home_call_analytics)
                             11 -> stringResource(R.string.dup_finder_title)
                             12 -> stringResource(R.string.contact_ringtones_title)
+                            13 -> stringResource(R.string.sos_title)
                             else -> stringResource(R.string.settings_title)
                         },
                         style = MaterialTheme.typography.titleLarge,
@@ -213,6 +215,10 @@ fun SettingsPanel(
                         cardBgColor = cardBgColor
                     )
                     12 -> ContactRingtonesSettings(
+                        viewModel = viewModel,
+                        cardBgColor = cardBgColor
+                    )
+                    13 -> EmergencySosSettings(
                         viewModel = viewModel,
                         cardBgColor = cardBgColor
                     )

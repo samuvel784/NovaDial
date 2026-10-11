@@ -8,6 +8,7 @@ package com.example.util
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
+import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telephony.SubscriptionInfo
@@ -32,7 +33,24 @@ data class SimAccountInfo(
 object MultiSimManager {
 
     @SuppressLint("MissingPermission")
-    fun getActiveSimAccounts(context: Context): List<SimAccountInfo> {
+    fun getActiveSimAccounts(context: Context): List<SimAccountInfo> =
+        getActiveSimAccounts(context, fabricatePlaceholders = true)
+
+    /**
+     * The SIMs a call can actually be placed on.
+     *
+     * Unlike [getActiveSimAccounts] this never invents placeholder slots, so callers can trust
+     * the returned [List.size]:
+     *  - `0` — no SIM information available (e.g. permission not yet granted): let the platform pick.
+     *  - `1` — a single SIM: dial it directly and never prompt the user to choose.
+     *  - `2` or more — the user must choose which SIM to use.
+     */
+    @SuppressLint("MissingPermission")
+    fun getCallableSims(context: Context): List<SimAccountInfo> =
+        getActiveSimAccounts(context, fabricatePlaceholders = false)
+
+    @SuppressLint("MissingPermission")
+    fun getActiveSimAccounts(context: Context, fabricatePlaceholders: Boolean): List<SimAccountInfo> {
         val simList = mutableListOf<SimAccountInfo>()
         try {
             val sm = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
@@ -129,8 +147,19 @@ object MultiSimManager {
                     )
                 }
             } else if (handles.isNotEmpty()) {
-                // FALLBACK: TelecomManager PhoneAccounts (Essential for eSIM & Delayed Permission states)
-                handles.forEachIndexed { index, handle ->
+                // FALLBACK: TelecomManager PhoneAccounts (essential for eSIM & delayed-permission states).
+                // Keep only SIM-capable accounts so SIP/VoIP accounts are not mistaken for extra SIMs.
+                val callableHandles = try {
+                    handles.filter { handle ->
+                        tm?.getPhoneAccount(handle)?.hasCapabilities(
+                            PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION
+                        ) ?: true
+                    }
+                } catch (_: Exception) {
+                    handles
+                }.ifEmpty { handles }
+
+                callableHandles.forEachIndexed { index, handle ->
                     simList.add(
                         SimAccountInfo(
                             slotIndex = index,
@@ -159,7 +188,7 @@ object MultiSimManager {
                 1
             }
 
-            if (simList.size < 2 && phoneCount >= 2) {
+            if (fabricatePlaceholders && simList.size < 2 && phoneCount >= 2) {
                 while (simList.size < 2) {
                     val nextSlot = simList.size
                     simList.add(

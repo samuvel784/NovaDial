@@ -3,7 +3,7 @@
   ~ Copyright (C) 2026 MovStore
   ~ SPDX-License-Identifier: GPL-3.0-or-later
   -->
-<paths xmlns:android="http://schemas.android.com/apk/res/android">
+<paths>
     <!-- Internal App Storage (Private) -->
     <files-path name="call_recordings" path="CallRecordings/" />
     <files-path name="exports" path="exports/" />

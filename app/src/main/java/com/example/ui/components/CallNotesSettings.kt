@@ -18,7 +18,6 @@
 package com.example.ui.components
 
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +46,7 @@ import com.example.util.RichHapticEngine
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.net.toUri
 
 @Composable
 fun CallNotesSettings(
@@ -173,12 +173,12 @@ fun CallNotesSettings(
                                         onClick = {
                                             RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                                             try {
-                                                val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${note.number}")).apply {
+                                                val intent = Intent(Intent.ACTION_CALL, "tel:${note.number}".toUri()).apply {
                                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 }
                                                 context.startActivity(intent)
                                             } catch (_: Exception) {
-                                                val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${note.number}")).apply {
+                                                val dialIntent = Intent(Intent.ACTION_DIAL, "tel:${note.number}".toUri()).apply {
                                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 }
                                                 context.startActivity(dialIntent)

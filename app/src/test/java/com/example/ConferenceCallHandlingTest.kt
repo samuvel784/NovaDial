@@ -6,7 +6,6 @@
 package com.example
 
 import android.app.Application
-import android.os.Bundle
 import android.telecom.Call
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.*
@@ -39,6 +38,8 @@ class ConferenceCallHandlingTest {
         assertFalse(CallManager.isConference(null))
     }
 
+    private fun hasFlag(value: Int, flag: Int): Boolean = (value and flag) != 0
+
     @Test
     fun testNormalCallWithMergeCapabilityIsNotMarkedAsConference() {
         // Standard Android Telecom emulator or cellular call has CAPABILITY_MERGE_CONFERENCE.
@@ -46,23 +47,21 @@ class ConferenceCallHandlingTest {
         val capabilities = Call.Details.CAPABILITY_MERGE_CONFERENCE or Call.Details.CAPABILITY_SWAP_CONFERENCE or Call.Details.CAPABILITY_MUTE
         val properties = 0
 
-        val hasConferenceProperty = (properties and Call.Details.PROPERTY_CONFERENCE != 0) ||
-                (properties and Call.Details.PROPERTY_GENERIC_CONFERENCE != 0)
-        assertFalse("Normal call properties must not have conference flags", hasConferenceProperty)
-
-        val isManagingConference = (capabilities and Call.Details.CAPABILITY_MANAGE_CONFERENCE != 0)
-        assertFalse("Normal call must not have manage conference capability", isManagingConference)
+        assertFalse(
+            "Normal call must not have manage conference capability",
+            hasFlag(capabilities, Call.Details.CAPABILITY_MANAGE_CONFERENCE)
+        )
+        assertFalse(
+            "Normal call properties must not have conference flags",
+            hasFlag(properties, Call.Details.PROPERTY_CONFERENCE)
+        )
+        assertFalse(hasFlag(properties, Call.Details.PROPERTY_GENERIC_CONFERENCE))
     }
 
     @Test
     fun testGenuineConferencePropertiesAreCorrectlyDetected() {
-        val confProperty = Call.Details.PROPERTY_CONFERENCE
-        assertTrue((confProperty and Call.Details.PROPERTY_CONFERENCE) != 0)
-
-        val genericConfProperty = Call.Details.PROPERTY_GENERIC_CONFERENCE
-        assertTrue((genericConfProperty and Call.Details.PROPERTY_GENERIC_CONFERENCE) != 0)
-
-        val manageCapability = Call.Details.CAPABILITY_MANAGE_CONFERENCE
-        assertTrue((manageCapability and Call.Details.CAPABILITY_MANAGE_CONFERENCE) != 0)
+        assertTrue(hasFlag(Call.Details.PROPERTY_CONFERENCE, Call.Details.PROPERTY_CONFERENCE))
+        assertTrue(hasFlag(Call.Details.PROPERTY_GENERIC_CONFERENCE, Call.Details.PROPERTY_GENERIC_CONFERENCE))
+        assertTrue(hasFlag(Call.Details.CAPABILITY_MANAGE_CONFERENCE, Call.Details.CAPABILITY_MANAGE_CONFERENCE))
     }
 }

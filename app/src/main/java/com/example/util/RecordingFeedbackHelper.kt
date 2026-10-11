@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Provides tactile haptic feedback and acoustic audio chimes
@@ -70,7 +71,7 @@ object RecordingFeedbackHelper {
                     }
                 }
                 toneGen.startTone(toneType, durationMs)
-                delay(durationMs.toLong() + 30L)
+                delay((durationMs + 30).milliseconds)
             } catch (_: Exception) {
             } finally {
                 try {

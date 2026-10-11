@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
-import com.example.model.CallReminder
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
 import java.text.SimpleDateFormat

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,7 +100,7 @@ object CallLogExport {
         write("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
 
         offsets[2] = out.size()
-        val kids = (0 until pages.size).joinToString(" ") { "${4 + it * 2} 0 R" }
+        val kids = pages.indices.joinToString(" ") { "${4 + it * 2} 0 R" }
         write("2 0 obj\n<< /Type /Pages /Kids [$kids] /Count ${pages.size} >>\nendobj\n")
 
         offsets[3] = out.size()

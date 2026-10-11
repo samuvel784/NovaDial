@@ -20,7 +20,6 @@ package com.example.ui.components
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.PowerManager
 import android.telecom.Call
 import android.telecom.CallAudioState
@@ -40,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,7 +46,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.CallManager
 import com.example.R
-import com.example.model.CallRecording
+import com.example.safeState
 import com.example.model.Contact
 import com.example.ui.theme.LocalAmoledMode
 import com.example.util.CallAudioHelper
@@ -56,7 +54,6 @@ import com.example.util.CallAudioRecorder
 import com.example.util.CallGestureSensorManager
 import com.example.util.RecordingFeedbackHelper
 import com.example.util.RichHapticEngine
-import kotlinx.coroutines.delay
 
 @Composable
 fun ActiveCallScreen(
@@ -177,7 +174,7 @@ fun ActiveCallScreen(
 
     val isAmoled = LocalAmoledMode.current
     val surfaceColor = if (isAmoled) Color.Black else MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-    val heldCall = remember(allCalls) { allCalls.firstOrNull { it.state == Call.STATE_HOLDING } }
+    val heldCall = remember(allCalls) { allCalls.firstOrNull { it.safeState == Call.STATE_HOLDING } }
 
     var isQuickDeclineMenuOpen by remember { mutableStateOf(false) }
     var isInCallDialpadOpen by remember { mutableStateOf(false) }
@@ -191,7 +188,7 @@ fun ActiveCallScreen(
         if (isFake) {
             fakeParticipants
         } else {
-            val activeList = allCalls.filter { it.state != Call.STATE_DISCONNECTED }
+            val activeList = allCalls.filter { it.safeState != Call.STATE_DISCONNECTED }
             val conferenceCall = activeList.find {
                 it.children.isNotEmpty() || it.details?.hasProperty(Call.Details.PROPERTY_CONFERENCE) == true
             }
@@ -215,7 +212,7 @@ fun ActiveCallScreen(
             fakeParticipants.size > 1
         } else {
             isConferenceActiveFlow || CallManager.isConference(currentCall) || allCalls.any {
-                it.state != Call.STATE_DISCONNECTED && CallManager.isConference(it)
+                it.safeState != Call.STATE_DISCONNECTED && CallManager.isConference(it)
             }
         }
     }
@@ -276,6 +273,7 @@ fun ActiveCallScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
+                    .navigationBarsPadding()
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween

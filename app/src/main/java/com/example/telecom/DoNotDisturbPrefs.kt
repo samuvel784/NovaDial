@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -8,6 +8,7 @@ package com.example.telecom
 import android.content.Context
 import android.content.SharedPreferences
 import java.util.Calendar
+import androidx.core.content.edit
 
 /**
  * Do Not Disturb schedule: a repeating daily window during which the call
@@ -47,12 +48,12 @@ object DoNotDisturbPrefs {
     fun getDays(context: Context): Int = prefs(context).getInt(KEY_DAYS, 0b1111111)
 
     fun setAll(context: Context, enabled: Boolean, startMin: Int, endMin: Int, days: Int) {
-        prefs(context).edit()
-            .putBoolean(KEY_ENABLED, enabled)
-            .putInt(KEY_START_MIN, startMin)
-            .putInt(KEY_END_MIN, endMin)
-            .putInt(KEY_DAYS, days)
-            .apply()
+        prefs(context).edit {
+            putBoolean(KEY_ENABLED, enabled)
+            putInt(KEY_START_MIN, startMin)
+            putInt(KEY_END_MIN, endMin)
+            putInt(KEY_DAYS, days)
+        }
     }
 
     /**
@@ -67,7 +68,7 @@ object DoNotDisturbPrefs {
         } else if (startMin < endMin) {
             minute in startMin until endMin
         } else {
-            minute >= startMin || minute < endMin
+            minute !in endMin until startMin
         }
     }
 

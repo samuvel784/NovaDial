@@ -33,6 +33,7 @@ import com.example.R
 import com.example.model.Contact
 import com.example.ui.theme.AppShapes
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CallDurationText(
@@ -51,7 +52,7 @@ fun CallDurationText(
         val isActive = if (isFake) fakeState == "ACTIVE" else callState == Call.STATE_ACTIVE
         if (isActive) {
             while (true) {
-                delay(1000)
+                delay(1000.milliseconds)
                 tick++
             }
         }

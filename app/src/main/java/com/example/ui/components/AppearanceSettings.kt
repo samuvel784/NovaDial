@@ -17,10 +17,6 @@
 
 package com.example.ui.components
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -30,6 +26,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
+import com.example.ui.theme.ThemeMode
 
 @Composable
 fun AppearanceSettings(
@@ -123,8 +121,8 @@ fun AppearanceSettings(
                             sublabel = stringResource(R.string.theme_day_sub),
                             accent = Color(0xFF0A84FF),
                             surfaceColor = Color.White,
-                            selected = themeMode == com.example.ui.theme.ThemeMode.DAY,
-                            onClick = { viewModel.updateThemeMode(com.example.ui.theme.ThemeMode.DAY) },
+                            selected = themeMode == ThemeMode.DAY,
+                            onClick = { viewModel.updateThemeMode(ThemeMode.DAY) },
                             modifier = Modifier.weight(1f)
                         )
                         ThemeModeOption(
@@ -132,8 +130,8 @@ fun AppearanceSettings(
                             sublabel = stringResource(R.string.theme_default_sub),
                             accent = Color(0xFF4DA3FF),
                             surfaceColor = Color(0xFF060A12),
-                            selected = themeMode == com.example.ui.theme.ThemeMode.DEFAULT,
-                            onClick = { viewModel.updateThemeMode(com.example.ui.theme.ThemeMode.DEFAULT) },
+                            selected = themeMode == ThemeMode.DEFAULT,
+                            onClick = { viewModel.updateThemeMode(ThemeMode.DEFAULT) },
                             modifier = Modifier.weight(1f)
                         )
                         ThemeModeOption(
@@ -141,8 +139,8 @@ fun AppearanceSettings(
                             sublabel = stringResource(R.string.theme_night_sub),
                             accent = Color(0xFF4DA3FF),
                             surfaceColor = Color.Black,
-                            selected = themeMode == com.example.ui.theme.ThemeMode.NIGHT,
-                            onClick = { viewModel.updateThemeMode(com.example.ui.theme.ThemeMode.NIGHT) },
+                            selected = themeMode == ThemeMode.NIGHT,
+                            onClick = { viewModel.updateThemeMode(ThemeMode.NIGHT) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -213,12 +211,12 @@ fun AppearanceSettings(
                             subtitle = stringResource(R.string.settings_dynamic_island_speaker_only_sub),
                             checked = isDynamicIslandSpeakerOnly,
                             onCheckedChange = { viewModel.updateDynamicIslandSpeakerOnly(it) },
-                            icon = Icons.Default.VolumeUp,
+                            icon = Icons.AutoMirrored.Filled.VolumeUp,
                             iconBgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                             iconTint = MaterialTheme.colorScheme.secondary
                         )
 
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        run {
                             val canOverlay = com.example.util.CallScreenPermissionHelper.canDrawOverlays(context)
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 16.dp),

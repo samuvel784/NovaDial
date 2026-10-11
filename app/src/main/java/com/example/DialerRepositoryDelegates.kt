@@ -31,9 +31,6 @@ suspend fun DialerRepository.addBlockedNumber(number: String) {
 suspend fun DialerRepository.removeBlockedNumber(number: String) {
     BlockedNumberContractManager.unblockNumber(context, number, dao)
 }
-suspend fun DialerRepository.isBlocked(number: String): Boolean {
-    return BlockedNumberContractManager.isBlocked(context, number, dao)
-}
 
 // Backup & Restore
 suspend fun DialerRepository.exportBackup(password: String = ""): String =
@@ -65,13 +62,8 @@ suspend fun DialerRepository.savePreferredSim(sim: String) =
     dao.insertSetting(AppSetting("preferred_sim", sim))
 
 // Call Notes
-suspend fun DialerRepository.getCallNote(number: String): CallNote? = dao.getLatestCallNote(number)
-fun DialerRepository.getAllCallNotes(): Flow<List<CallNote>> = dao.getAllCallNotesFlow()
-suspend fun DialerRepository.saveCallNote(callNote: CallNote) = dao.insertCallNote(callNote)
 suspend fun DialerRepository.saveCallNote(number: String, note: String) =
     dao.insertCallNote(CallNote(number = number, note = note, lastUpdated = System.currentTimeMillis()))
-suspend fun DialerRepository.deleteCallNote(number: String) = dao.deleteCallNotesForNumber(number)
-suspend fun DialerRepository.deleteCallNoteById(id: Long) = dao.deleteCallNoteById(id)
 
 // Call Recordings
 fun DialerRepository.getAllCallRecordings(): Flow<List<CallRecording>> = dao.getAllCallRecordingsFlow()

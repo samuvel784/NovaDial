@@ -21,6 +21,7 @@ import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import kotlinx.coroutines.*
+import kotlin.time.Duration.Companion.milliseconds
 
 object FlashLightManager {
     private var flashJob: Job? = null
@@ -58,7 +59,7 @@ object FlashLightManager {
                     try {
                         cameraManager.setTorchMode(targetCameraId, state)
                     } catch (_: Exception) {}
-                    delay(350)
+                    delay(350.milliseconds)
                 }
             } catch (_: Exception) {
             } finally {

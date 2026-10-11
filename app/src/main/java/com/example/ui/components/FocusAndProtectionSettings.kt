@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,11 @@ package com.example.ui.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoNotDisturbOn
@@ -80,11 +86,12 @@ fun FocusAndProtectionSettings(
     var announcerEnabled by remember { mutableStateOf(CallProtectionPrefs.isAnnouncerEnabled(context)) }
     var announcerTemplate by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerTemplate(context)) }
     var announcerUserName by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerUserName(context)) }
-    var announcerRepeat by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerRepeat(context)) }
+    var announcerRepeat by remember { mutableIntStateOf(CallProtectionPrefs.getAnnouncerRepeat(context)) }
     var announcerSpeed by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerSpeedPercent(context)) }
     var announcerPitch by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerPitchPercent(context)) }
     var announcerVolume by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerVolumePercent(context)) }
     var headphonesOnly by remember { mutableStateOf(CallProtectionPrefs.isAnnouncerHeadphonesOnly(context)) }
+    var announcerVoice by remember { mutableStateOf(CallProtectionPrefs.getAnnouncerVoice(context)) }
     var announceUnknown by remember { mutableStateOf(CallProtectionPrefs.isAnnounceUnknown(context)) }
 
     var showAddVipDialog by remember { mutableStateOf(false) }
@@ -540,10 +547,24 @@ fun FocusAndProtectionSettings(
                 iconTint = MaterialTheme.colorScheme.primary
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            AnimatedVisibility(
+                visible = announcerEnabled,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    AnnouncerVoiceSelector(
+                        selected = announcerVoice,
+                        onSelect = {
+                            announcerVoice = it
+                            CallProtectionPrefs.setAnnouncerVoice(context, it)
+                        }
+                    )
 
-            Text(
-                text = stringResource(R.string.announcer_message_title),
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                    Text(
+                        text = stringResource(R.string.announcer_message_title),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
@@ -665,6 +686,8 @@ fun FocusAndProtectionSettings(
                 iconTint = MaterialTheme.colorScheme.secondary
             )
             Spacer(Modifier.height(4.dp))
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -761,6 +784,58 @@ private fun ProtectionChoiceRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun AnnouncerVoiceSelector(
+    selected: CallProtectionPrefs.AnnouncerVoice,
+    onSelect: (CallProtectionPrefs.AnnouncerVoice) -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.announcer_voice_title),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val options = listOf(
+                CallProtectionPrefs.AnnouncerVoice.DEFAULT to R.string.announcer_voice_default,
+                CallProtectionPrefs.AnnouncerVoice.MALE to R.string.announcer_voice_male,
+                CallProtectionPrefs.AnnouncerVoice.FEMALE to R.string.announcer_voice_female
+            )
+            options.forEach { (voice, labelRes) ->
+                FilterChip(
+                    selected = selected == voice,
+                    onClick = {
+                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                        onSelect(voice)
+                    },
+                    label = { Text(stringResource(labelRes)) },
+                    leadingIcon = if (selected == voice) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.announcer_voice_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

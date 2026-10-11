@@ -2,9 +2,9 @@ package com.example
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import com.example.model.CallRecord
 import com.example.ui.viewmodel.DialerViewModel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -99,7 +99,7 @@ class DialerViewModelTest {
     @Test
     fun `inspect call logs dates`() {
         val repo = com.example.DialerRepository(context)
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             repo.syncCallLogs()
             val callLogs = repo.getAllCallHistoryFlow()
             val firstList = callLogs.first()
@@ -115,7 +115,7 @@ class DialerViewModelTest {
 
     @Test
     fun `clearAllCallLogs clears the local and flow records`() {
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             viewModel.clearAllCallLogs()
             val callHistory = viewModel.allCallHistoryFlow.value
             assertTrue(callHistory.isEmpty())
@@ -123,64 +123,34 @@ class DialerViewModelTest {
     }
 
     @Test
-    fun `cursor-based digit insertion in middle of string works correctly`() {
-        viewModel.onDialpadInputChange("1245")
-        // Position cursor between '2' and '4' (index 2)
-        viewModel.onDialpadTextFieldValueChange(
-            androidx.compose.ui.text.input.TextFieldValue(
-                text = "1245",
-                selection = androidx.compose.ui.text.TextRange(2)
-            )
-        )
-        // Insert '3'
-        viewModel.insertDialpadDigit("3")
+    fun `dialpad digits are grouped in fives while the raw value stays unformatted`() {
+        viewModel.onDialpadInputChange("9876543210")
+        // Canonical value (used for dialing/searching) stays raw...
+        assertEquals("9876543210", viewModel.dialpadInput.value)
+        // ...while the on-screen field shows the spaced form.
+        assertEquals("98765 43210", viewModel.dialpadTextFieldValue.value.text)
+        assertEquals(11, viewModel.dialpadTextFieldValue.value.selection.start)
+    }
 
+    @Test
+    fun `backspace removes the last digit and reformats`() {
+        viewModel.onDialpadInputChange("123456")
+        viewModel.backspaceDialpad()
         assertEquals("12345", viewModel.dialpadInput.value)
         assertEquals("12345", viewModel.dialpadTextFieldValue.value.text)
-        assertEquals(3, viewModel.dialpadTextFieldValue.value.selection.start)
+        assertEquals(5, viewModel.dialpadTextFieldValue.value.selection.start)
     }
 
     @Test
-    fun `cursor-based backspace in middle of string works correctly`() {
-        viewModel.onDialpadInputChange("12345")
-        // Position cursor right after '3' (index 3)
-        viewModel.onDialpadTextFieldValueChange(
-            androidx.compose.ui.text.input.TextFieldValue(
-                text = "12345",
-                selection = androidx.compose.ui.text.TextRange(3)
-            )
-        )
-        // Backspace should remove '3'
-        viewModel.backspaceDialpad()
-
-        assertEquals("1245", viewModel.dialpadInput.value)
-        assertEquals(2, viewModel.dialpadTextFieldValue.value.selection.start)
-    }
-
-    @Test
-    fun `selection replacement and selection backspace works correctly`() {
+    fun `pasting replaces the number and sanitizes it`() {
         viewModel.onDialpadInputChange("12995")
-        // Select "99" (from index 2 to 4)
-        viewModel.onDialpadTextFieldValueChange(
-            androidx.compose.ui.text.input.TextFieldValue(
-                text = "12995",
-                selection = androidx.compose.ui.text.TextRange(2, 4)
-            )
-        )
-        // Insert "34" over selection
-        viewModel.insertDialpadDigit("34")
-        assertEquals("12345", viewModel.dialpadInput.value)
+        assertEquals("12995", viewModel.dialpadInput.value)
 
-        // Select "34" and backspace
-        viewModel.onDialpadTextFieldValueChange(
-            androidx.compose.ui.text.input.TextFieldValue(
-                text = "12345",
-                selection = androidx.compose.ui.text.TextRange(2, 4)
-            )
-        )
-        viewModel.backspaceDialpad()
-        assertEquals("125", viewModel.dialpadInput.value)
-        assertEquals(2, viewModel.dialpadTextFieldValue.value.selection.start)
+        // The paste path replaces the whole value; letters and stray characters are stripped.
+        viewModel.onDialpadInputChange("+91 98765 43210abc")
+        assertEquals("+919876543210", viewModel.dialpadInput.value)
+        assertEquals("+91 98765 43210", viewModel.dialpadTextFieldValue.value.text)
+        assertEquals(15, viewModel.dialpadTextFieldValue.value.selection.start)
     }
 
     @Test

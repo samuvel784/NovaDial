@@ -6,7 +6,6 @@
 package com.example.ui.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 
 val UnifiedSquircleMaterialShapes = Shapes(
     extraSmall = RoundedCornerShape(10.dp),
@@ -24,9 +24,6 @@ val UnifiedSquircleMaterialShapes = Shapes(
     large = AppShapes.Dialog,
     extraLarge = RoundedCornerShape(36.dp)
 )
-
-val ExpressiveShapes = UnifiedSquircleMaterialShapes
-val StandardShapes = UnifiedSquircleMaterialShapes
 
 @Composable
 fun getMissedCallColor(): Color {
@@ -74,8 +71,8 @@ fun parseHexColor(hex: String, fallback: Color = Color(0xFF5A4BE0)): Color {
     return try {
         val clean = hex.removePrefix("#").trim()
         val colorInt = when (clean.length) {
-            6 -> android.graphics.Color.parseColor("#FF$clean")
-            8 -> android.graphics.Color.parseColor("#$clean")
+            6 -> "#FF$clean".toColorInt()
+            8 -> "#$clean".toColorInt()
             else -> return fallback
         }
         Color(colorInt)

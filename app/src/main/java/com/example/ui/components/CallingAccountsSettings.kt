@@ -19,7 +19,6 @@ package com.example.ui.components
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import android.telecom.TelecomManager
 import android.widget.Toast
@@ -40,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
+import androidx.core.net.toUri
 
 @Composable
 fun CallingAccountsSettings(
@@ -185,7 +185,7 @@ private fun VoicemailCallingAccountsRow(
 
     SettingsRowNav(
         title = stringResource(R.string.settings_voicemail_num),
-        subtitle = if (voicemailNum.isNotBlank()) voicemailNum else stringResource(R.string.settings_voicemail_num_sub),
+        subtitle = voicemailNum.ifBlank { stringResource(R.string.settings_voicemail_num_sub) },
         onClick = { showVoicemailDialog = true },
         icon = Icons.Default.Voicemail,
         iconBgColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
@@ -220,7 +220,7 @@ private fun VoicemailCallingAccountsRow(
                             onClick = {
                                 RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                                 try {
-                                    val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$voicemailInput")).apply {
+                                    val dialIntent = Intent(Intent.ACTION_DIAL, "tel:$voicemailInput".toUri()).apply {
                                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                     }
                                     context.startActivity(dialIntent)

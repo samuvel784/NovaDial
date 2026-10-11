@@ -19,7 +19,6 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material3.*
@@ -36,7 +35,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ui.theme.AppShapes
-import com.example.util.MultiSimManager
 import com.example.util.RichHapticEngine
 
 @Composable
@@ -46,7 +44,6 @@ fun SettingsPreferredSimRow(
     haptic: HapticFeedback? = null
 ) {
     val context = LocalContext.current
-    val physicalSimCount = remember(context) { MultiSimManager.getPhysicalSimCount(context) }
 
     ListItem(
         headlineContent = {

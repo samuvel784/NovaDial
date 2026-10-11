@@ -3,7 +3,6 @@ package com.example
 import android.app.Application
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
-import com.example.model.CallRecord
 import com.example.model.CallType
 import com.example.ui.viewmodel.DialerViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -106,8 +105,8 @@ class DialerRobustnessTest {
         assertEquals("+911#", cleanNumber)
 
         val pureEmergency = "911"
-        val isEmergency = pureEmergency == "911" || pureEmergency == "112" || pureEmergency == "999"
-        assertTrue(isEmergency)
+        val emergencyNumbers = listOf("911", "112", "999")
+        assertTrue(emergencyNumbers.contains(pureEmergency))
     }
 
     @Test

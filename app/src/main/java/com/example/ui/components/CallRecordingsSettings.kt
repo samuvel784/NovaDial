@@ -18,7 +18,6 @@
 package com.example.ui.components
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
 import android.media.PlaybackParams
@@ -31,7 +30,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -64,6 +62,7 @@ import com.example.util.VaultBiometricAuthHelper
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,12 +96,16 @@ fun CallRecordingsSettings(
     LaunchedEffect(Unit) {
         viewModel.recoverRecordingsFromDisk(context)
         if (isVaultLockEnabled && !isVaultUnlocked && activity != null) {
-            VaultBiometricAuthHelper.authenticate(
-                activity = activity,
-                title = context.getString(R.string.vault_locked_title),
-                subtitle = context.getString(R.string.vault_locked_desc),
-                onSuccess = { isVaultUnlocked = true }
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                VaultBiometricAuthHelper.authenticate(
+                    activity = activity,
+                    title = context.getString(R.string.vault_locked_title),
+                    subtitle = context.getString(R.string.vault_locked_desc),
+                    onSuccess = { isVaultUnlocked = true }
+                )
+            } else {
+                isVaultUnlocked = true
+            }
         }
     }
 
@@ -616,15 +619,20 @@ fun CallRecordingsSettings(
                     onCheckedChange = { enabled ->
                         RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                         if (enabled && activity != null) {
-                            VaultBiometricAuthHelper.authenticate(
-                                activity = activity,
-                                title = context.getString(R.string.vault_locked_title),
-                                subtitle = context.getString(R.string.vault_locked_desc),
-                                onSuccess = {
-                                    viewModel.updateRecordingsBiometricLockEnabled(true)
-                                    isVaultUnlocked = true
-                                }
-                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                VaultBiometricAuthHelper.authenticate(
+                                    activity = activity,
+                                    title = context.getString(R.string.vault_locked_title),
+                                    subtitle = context.getString(R.string.vault_locked_desc),
+                                    onSuccess = {
+                                        viewModel.updateRecordingsBiometricLockEnabled(true)
+                                        isVaultUnlocked = true
+                                    }
+                                )
+                            } else {
+                                viewModel.updateRecordingsBiometricLockEnabled(true)
+                                isVaultUnlocked = true
+                            }
                         } else {
                             viewModel.updateRecordingsBiometricLockEnabled(enabled)
                             if (!enabled) isVaultUnlocked = true
@@ -822,12 +830,16 @@ fun CallRecordingsSettings(
                         onClick = {
                             RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                             if (activity != null) {
-                                VaultBiometricAuthHelper.authenticate(
-                                    activity = activity,
-                                    title = context.getString(R.string.vault_locked_title),
-                                    subtitle = context.getString(R.string.vault_locked_desc),
-                                    onSuccess = { isVaultUnlocked = true }
-                                )
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                    VaultBiometricAuthHelper.authenticate(
+                                        activity = activity,
+                                        title = context.getString(R.string.vault_locked_title),
+                                        subtitle = context.getString(R.string.vault_locked_desc),
+                                        onSuccess = { isVaultUnlocked = true }
+                                    )
+                                } else {
+                                    isVaultUnlocked = true
+                                }
                             } else {
                                 isVaultUnlocked = true
                             }
@@ -990,7 +1002,7 @@ fun CallRecordingsSettings(
                                     mp = MediaPlayer().apply {
                                         setDataSource(rec.filePath)
                                         prepare()
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && playbackSpeed != 1.0f) {
+                                        if (playbackSpeed != 1.0f) {
                                             try {
                                                 playbackParams = playbackParams.setSpeed(playbackSpeed)
                                             } catch (_: Exception) {}
@@ -1014,12 +1026,10 @@ fun CallRecordingsSettings(
                         onSpeedChange = { speed ->
                             RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                             playbackSpeed = speed
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                try {
-                                    mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(speed)
-                                        ?: PlaybackParams().apply { this.speed = speed }
-                                } catch (_: Exception) {}
-                            }
+                            try {
+                                mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(speed)
+                                    ?: PlaybackParams().apply { this.speed = speed }
+                            } catch (_: Exception) {}
                         },
                         onEditNote = {
                             noteEditingRecording = rec
@@ -1050,7 +1060,7 @@ fun CallRecordingsSettings(
                         LaunchedEffect(playingId) {
                             while (playingId == rec.id && mediaPlayer?.isPlaying == true) {
                                 currentPosMs = mediaPlayer?.currentPosition ?: 0
-                                delay(150)
+                                delay(150.milliseconds)
                             }
                         }
                     }

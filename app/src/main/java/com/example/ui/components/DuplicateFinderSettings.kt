@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ package com.example.ui.components
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,11 +50,14 @@ import com.example.util.DuplicateFinder
 import com.example.util.DuplicateGroup
 import com.example.util.RichHapticEngine
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private sealed interface DuplicateAction {
     data class Merge(val group: DuplicateGroup, val keep: DuplicateContact) : DuplicateAction
     data class DeleteOthers(val group: DuplicateGroup, val keep: DuplicateContact) : DuplicateAction
     data class DeleteOne(val contact: DuplicateContact) : DuplicateAction
+    data object MergeAll : DuplicateAction
+    data object DeleteAll : DuplicateAction
 }
 
 @Composable
@@ -79,13 +81,18 @@ fun DuplicateFinderSettings(
                 context, Manifest.permission.WRITE_CONTACTS
             ) == PackageManager.PERMISSION_GRANTED
 
+    fun keepIdFor(group: DuplicateGroup): Long =
+        keepSelection[group.sharedNumber]
+            ?: group.contacts.firstOrNull()?.contactId
+            ?: -1L
+
     fun scan() {
         scope.launch {
             isLoading = true
             val result = DuplicateFinder.findDuplicates(context)
             groups = result
             keepSelection = result.associate { group ->
-                group.sharedNumber to (group.contacts.firstOrNull()?.rawContactId ?: -1L)
+                group.sharedNumber to (group.contacts.firstOrNull()?.contactId ?: -1L)
             }
             isLoading = false
         }
@@ -95,7 +102,7 @@ fun DuplicateFinderSettings(
         if (hasPermission) scan() else isLoading = false
     }
 
-    // Confirmation dialog
+    // Confirmation dialog — every destructive/permanent action is confirmed first.
     pendingAction?.let { action ->
         val (title, desc, confirmLabel) = when (action) {
             is DuplicateAction.Merge -> Triple(
@@ -113,6 +120,16 @@ fun DuplicateFinderSettings(
                 stringResource(R.string.dup_delete_one_confirm_desc),
                 stringResource(R.string.delete)
             )
+            is DuplicateAction.MergeAll -> Triple(
+                stringResource(R.string.dup_merge_confirm_title),
+                stringResource(R.string.dup_merge_all_confirm_desc),
+                stringResource(R.string.dup_merge_all)
+            )
+            is DuplicateAction.DeleteAll -> Triple(
+                stringResource(R.string.dup_delete_confirm_title),
+                stringResource(R.string.dup_delete_all_confirm_desc),
+                stringResource(R.string.dup_delete_all)
+            )
         }
         AlertDialog(
             onDismissRequest = { pendingAction = null },
@@ -125,33 +142,51 @@ fun DuplicateFinderSettings(
                         scope.launch {
                             when (action) {
                                 is DuplicateAction.Merge -> {
-                                    val others = action.group.contacts
-                                        .map { it.rawContactId }
-                                        .filter { it != action.keep.rawContactId }
-                                    val count = DuplicateFinder.mergeInto(
-                                        context, action.keep.rawContactId, others
+                                    val count = DuplicateFinder.merge(
+                                        context, action.keep, action.group.contacts
                                     )
                                     toastMessage = context.getString(R.string.dup_merged, count)
                                 }
                                 is DuplicateAction.DeleteOthers -> {
                                     val others = action.group.contacts
-                                        .filter { it.rawContactId != action.keep.rawContactId }
-                                    others.forEach { DuplicateFinder.deleteRawContact(context, it.rawContactId) }
-                                    toastMessage = context.getString(R.string.dup_deleted, others.size)
+                                        .filter { it.contactId != action.keep.contactId }
+                                    val count = DuplicateFinder.delete(context, others)
+                                    toastMessage = context.getString(R.string.dup_deleted, count)
                                 }
                                 is DuplicateAction.DeleteOne -> {
-                                    DuplicateFinder.deleteRawContact(context, action.contact.rawContactId)
-                                    toastMessage = context.getString(R.string.dup_deleted, 1)
+                                    val count = DuplicateFinder.delete(context, listOf(action.contact))
+                                    toastMessage = context.getString(R.string.dup_deleted, count)
+                                }
+                                is DuplicateAction.MergeAll -> {
+                                    var total = 0
+                                    for (group in groups) {
+                                        val keep = group.contacts.firstOrNull {
+                                            it.contactId == keepIdFor(group)
+                                        } ?: continue
+                                        total += DuplicateFinder.merge(context, keep, group.contacts)
+                                    }
+                                    toastMessage = context.getString(R.string.dup_merged, total)
+                                }
+                                is DuplicateAction.DeleteAll -> {
+                                    var total = 0
+                                    for (group in groups) {
+                                        val keepId = keepIdFor(group)
+                                        val others = group.contacts.filter { it.contactId != keepId }
+                                        total += DuplicateFinder.delete(context, others)
+                                    }
+                                    toastMessage = context.getString(R.string.dup_deleted, total)
                                 }
                             }
                             RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.SUCCESS)
                             scan()
                         }
                     },
-                    colors = if (action is DuplicateAction.Merge) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = when (action) {
+                        is DuplicateAction.Merge, is DuplicateAction.MergeAll ->
+                            ButtonDefaults.buttonColors()
+                        else -> ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
                     }
                 ) {
                     Text(confirmLabel)
@@ -227,6 +262,38 @@ fun DuplicateFinderSettings(
             }
         }
 
+        // Bulk actions across every group.
+        if (!isLoading && groups.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { pendingAction = DuplicateAction.MergeAll },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Merge, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.dup_merge_all))
+                    }
+                    OutlinedButton(
+                        onClick = { pendingAction = DuplicateAction.DeleteAll },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.dup_delete_all))
+                    }
+                }
+            }
+        }
+
         if (isLoading) {
             item {
                 Box(
@@ -249,21 +316,21 @@ fun DuplicateFinderSettings(
             }
         } else {
             items(groups, key = { it.sharedNumber }) { group ->
-                val keepId = keepSelection[group.sharedNumber] ?: group.contacts.first().rawContactId
+                val keepId = keepIdFor(group)
                 DuplicateGroupCard(
                     group = group,
-                    keepRawId = keepId,
+                    keepContactId = keepId,
                     cardBgColor = cardBgColor,
                     onSelectKeep = { contact ->
-                        keepSelection = keepSelection + (group.sharedNumber to contact.rawContactId)
+                        keepSelection = keepSelection + (group.sharedNumber to contact.contactId)
                     },
                     onMerge = {
-                        val keep = group.contacts.first { it.rawContactId == keepId }
-                        pendingAction = DuplicateAction.Merge(group, keep)
+                        val keep = group.contacts.firstOrNull { it.contactId == keepId }
+                        if (keep != null) pendingAction = DuplicateAction.Merge(group, keep)
                     },
                     onDeleteOthers = {
-                        val keep = group.contacts.first { it.rawContactId == keepId }
-                        pendingAction = DuplicateAction.DeleteOthers(group, keep)
+                        val keep = group.contacts.firstOrNull { it.contactId == keepId }
+                        if (keep != null) pendingAction = DuplicateAction.DeleteOthers(group, keep)
                     },
                     onDeleteOne = { contact ->
                         pendingAction = DuplicateAction.DeleteOne(contact)
@@ -281,7 +348,7 @@ fun DuplicateFinderSettings(
 @Composable
 private fun DuplicateGroupCard(
     group: DuplicateGroup,
-    keepRawId: Long,
+    keepContactId: Long,
     cardBgColor: Color,
     onSelectKeep: (DuplicateContact) -> Unit,
     onMerge: () -> Unit,
@@ -305,7 +372,7 @@ private fun DuplicateGroupCard(
             )
 
             group.contacts.forEach { contact ->
-                val selected = contact.rawContactId == keepRawId
+                val selected = contact.contactId == keepContactId
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -422,7 +489,7 @@ private fun DuplicateInfoCard(
 @Composable
 private fun ToastMessage(message: String, onDismiss: () -> Unit) {
     LaunchedEffect(message) {
-        kotlinx.coroutines.delay(2200)
+        kotlinx.coroutines.delay(2200.milliseconds)
         onDismiss()
     }
     Box(

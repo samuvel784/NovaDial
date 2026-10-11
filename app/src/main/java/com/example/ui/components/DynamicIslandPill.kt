@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -64,11 +65,10 @@ import com.example.util.RichHapticEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun DynamicIslandPill(
@@ -99,7 +99,7 @@ fun DynamicIslandPill(
     LaunchedEffect(callState) {
         if (callState == Call.STATE_ACTIVE) {
             while (true) {
-                delay(1000)
+                delay(1000.milliseconds)
                 tickTrigger++
             }
         }
@@ -123,7 +123,7 @@ fun DynamicIslandPill(
     val isSpeakerOn = audioState?.route == CallAudioState.ROUTE_SPEAKER
     val isMuted = audioState?.isMuted == true
     val isConference by CallManager.isConferenceActive.collectAsStateWithLifecycle()
-    val baseName = if (callerName.isNotBlank()) callerName else callerNumber.ifEmpty { stringResource(R.string.unknown) }
+    val baseName = callerName.ifBlank { callerNumber.ifEmpty { stringResource(R.string.unknown) } }
     val displayName = if (isConference) "👥 $baseName" else baseName
 
     Box(
@@ -508,7 +508,7 @@ fun DynamicIslandPill(
 
                                 // 2. Speaker Action Button
                                 DynamicIslandActionButton(
-                                    icon = if (isSpeakerOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.Default.VolumeDown,
+                                    icon = if (isSpeakerOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeDown,
                                     label = stringResource(R.string.speaker),
                                     isActive = isSpeakerOn,
                                     activeColor = Color(0xFF00E5FF),

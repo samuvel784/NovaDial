@@ -20,9 +20,7 @@ package com.example.util
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.BlockedNumberContract
-import android.telephony.PhoneNumberUtils
 import com.example.data.DialerDao
 import com.example.model.BlockedNumber
 import kotlinx.coroutines.Dispatchers
@@ -42,14 +40,14 @@ object BlockedNumberContractManager {
 
             // CRITICAL SAFETY FIX: Emergency services must NEVER be blocked under any condition
             try {
-                if (PhoneNumberUtils.isEmergencyNumber(trimmed)) return@withContext false
+                if (PhoneNumberCompat.isEmergencyNumber(context, trimmed)) return@withContext false
             } catch (_: Exception) {}
 
             val cleanNum = trimmed.filter { it.isDigit() || it == '+' }
 
             // 1. Check System BlockedNumberContract (requires default dialer role)
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
+                if (BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
                     val isSystemBlocked = BlockedNumberContract.isBlocked(context, cleanNum) || 
                                           BlockedNumberContract.isBlocked(context, trimmed)
                     if (isSystemBlocked) return@withContext true
@@ -77,7 +75,7 @@ object BlockedNumberContractManager {
 
             // Never block emergency numbers
             try {
-                if (PhoneNumberUtils.isEmergencyNumber(trimmed)) return@withContext false
+                if (PhoneNumberCompat.isEmergencyNumber(context, trimmed)) return@withContext false
             } catch (_: Exception) {}
 
             val cleanNum = if (trimmed.contains("*")) trimmed else trimmed.filter { it.isDigit() || it == '+' }
@@ -85,7 +83,7 @@ object BlockedNumberContractManager {
 
             // Try System BlockedNumberContract first
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
+                if (BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
                     val values = ContentValues().apply {
                         put(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER, trimmed)
                     }
@@ -119,7 +117,7 @@ object BlockedNumberContractManager {
             var systemSuccess = false
 
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
+                if (BlockedNumberContract.canCurrentUserBlockNumbers(context)) {
                     val count = context.contentResolver.delete(
                         BlockedNumberContract.BlockedNumbers.CONTENT_URI,
                         "${BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER} = ? OR ${BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER} = ?",

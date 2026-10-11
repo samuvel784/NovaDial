@@ -10,7 +10,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -29,7 +28,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
@@ -60,6 +58,98 @@ import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
 
 const val MAX_DIALPAD_MATCH_ROWS = 6
+
+/**
+ * Live T9 suggestions. Rendered at the TOP of the keypad sheet so the typed
+ * number can stay down by the keypad (see the layout note in [DialpadOverlay]).
+ */
+@Composable
+private fun DialpadMatchesSection(
+    matches: List<DialpadMatch>,
+    onCallClick: (String) -> Unit
+) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.dialpad_matches_title),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = stringResource(R.string.dialpad_matches_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 168.dp)
+            .padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        items(matches.take(MAX_DIALPAD_MATCH_ROWS)) { match ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(AppShapes.Card)
+                    .clickable {
+                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                        onCallClick(match.number)
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(AppShapes.Avatar)
+                        .background(match.avatarBg.copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = match.avatarText,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = match.avatarTextColor
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = match.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = match.label.ifBlank { match.number },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Call,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -98,6 +188,7 @@ fun DialpadOverlay(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -114,6 +205,15 @@ fun DialpadOverlay(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Matching contacts surface at the TOP of the sheet; the typed number stays
+            // down by the keypad so it never floats to the top of the screen.
+            if (inputValue.isNotBlank() && dialpadMatches.isNotEmpty()) {
+                DialpadMatchesSection(
+                    matches = dialpadMatches,
+                    onCallClick = onCallClick
+                )
+            }
 
             val isUnsavedNumber = remember(inputValue) {
                 if (inputValue.isBlank()) false
@@ -194,7 +294,7 @@ fun DialpadOverlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .heightIn(min = 56.dp, max = 132.dp)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -218,14 +318,14 @@ fun DialpadOverlay(
                                     textAlign = TextAlign.Center
                                 )
                             } else {
-                                MaterialTheme.typography.displaySmall.copy(
+                                MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
                                 )
                             },
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            singleLine = true,
+                            singleLine = false,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { if (it.isFocused) keyboardController?.hide() }
@@ -307,90 +407,6 @@ fun DialpadOverlay(
                 }
             }
 
-            // QUICK T9 MATCHES: contact suggestions surface live as you type
-            if (inputValue.isNotBlank() && dialpadMatches.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.dialpad_matches_title),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.dialpad_matches_hint),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 168.dp)
-                        .padding(horizontal = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(dialpadMatches.take(MAX_DIALPAD_MATCH_ROWS)) { match ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(AppShapes.Card)
-                                .clickable {
-                                    RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
-                                    onCallClick(match.number)
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(AppShapes.Avatar)
-                                    .background(match.avatarBg.copy(alpha = 0.85f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = match.avatarText,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = match.avatarTextColor
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = match.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = match.label.ifBlank { match.number },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.Call,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             Spacer(modifier = Modifier.height(8.dp))
 
             // Dialer Grid
@@ -423,9 +439,11 @@ fun DialpadOverlay(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            val activeSims = remember(context) { com.example.util.MultiSimManager.getActiveSimAccounts(context) }
+            // Real, callable SIMs only — never placeholder slots.
+            val activeSims = remember(context) { com.example.util.MultiSimManager.getCallableSims(context) }
             val preferredSim = viewModel?.preferredSim?.value ?: "Ask"
-            val isDualSim = (preferredSim == "Ask" || activeSims.size > 1) && (activeSims.size >= 2 || com.example.util.MultiSimManager.getPhysicalSimCount(context) >= 2)
+            // Offer a per-SIM choice only when the device really has two SIMs and the user asked to be prompted.
+            val isDualSim = preferredSim == "Ask" && activeSims.size >= 2
 
             val sim1 = activeSims.getOrNull(0)
             val sim2 = activeSims.getOrNull(1)
@@ -455,7 +473,7 @@ fun DialpadOverlay(
                             if (viewModel?.vibrateOnClickEnabled?.value != false) {
                                 RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.SUCCESS)
                             }
-                            if (onCallWithSim != null) onCallWithSim(inputValue, "SIM 1") else onCallClick(inputValue)
+                            if (onCallWithSim != null) onCallWithSim(inputValue, "SIM ${(sim1?.slotIndex ?: 0) + 1}") else onCallClick(inputValue)
                         },
                         shape = AppShapes.Keypad,
                         color = getCallGreenColor(),
@@ -479,7 +497,7 @@ fun DialpadOverlay(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -497,7 +515,7 @@ fun DialpadOverlay(
                             if (viewModel?.vibrateOnClickEnabled?.value != false) {
                                 RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.SUCCESS)
                             }
-                            if (onCallWithSim != null) onCallWithSim(inputValue, "SIM 2") else onCallClick(inputValue)
+                            if (onCallWithSim != null) onCallWithSim(inputValue, "SIM ${(sim2?.slotIndex ?: 1) + 1}") else onCallClick(inputValue)
                         },
                         shape = AppShapes.Keypad,
                         color = getCallGreenColor().copy(alpha = 0.88f),
@@ -521,7 +539,7 @@ fun DialpadOverlay(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

@@ -6,7 +6,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
-import java.io.File
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.util.Arrays
@@ -14,6 +13,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import androidx.core.content.edit
 
 object DatabaseKeyManager {
     private const val KEY_ALIAS = "DialerDbMasterKey"
@@ -35,11 +35,8 @@ object DatabaseKeyManager {
         }
 
         // 2. Direct Boot safe context: ensures accessibility across reboots/incoming calls
-        val directBootContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            context.createDeviceProtectedStorageContext()
-        } else {
-            context
-        }
+        // minSdk 24 >= N (24); device-protected storage is always available.
+        val directBootContext = context.createDeviceProtectedStorageContext()
 
         val prefs = directBootContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val encryptedKeyBase64 = prefs.getString(ENCRYPTED_DB_KEY, null)
@@ -66,7 +63,10 @@ object DatabaseKeyManager {
                 // If hardware key or prefs were corrupted/invalidated, proceed to regenerate fresh key
             }
             // Clear unrecoverable prefs entries
-            prefs.edit().remove(ENCRYPTED_DB_KEY).remove(GCM_IV).commit()
+            prefs.edit(commit = true) {
+                remove(ENCRYPTED_DB_KEY)
+                remove(GCM_IV)
+            }
         }
 
         // 4. Generate new 256-bit database passphrase
@@ -81,10 +81,10 @@ object DatabaseKeyManager {
             val iv = cipher.iv
             val encryptedKey = cipher.doFinal(rawDbKey)
 
-            prefs.edit()
-                .putString(ENCRYPTED_DB_KEY, Base64.encodeToString(encryptedKey, Base64.NO_WRAP))
-                .putString(GCM_IV, Base64.encodeToString(iv, Base64.NO_WRAP))
-                .commit() // Commit immediately to ensure durability before opening DB
+            prefs.edit(commit = true) {
+                putString(ENCRYPTED_DB_KEY, Base64.encodeToString(encryptedKey, Base64.NO_WRAP))
+                putString(GCM_IV, Base64.encodeToString(iv, Base64.NO_WRAP))
+            } // Commit immediately to ensure durability before opening DB
 
             cachedKey = rawDbKey.copyOf()
             return rawDbKey.copyOf()
@@ -128,16 +128,5 @@ object DatabaseKeyManager {
 
         keyGenerator.init(builder.build())
         return keyGenerator.generateKey()
-    }
-
-    /**
-     * Call this when the app process is being destroyed or the user locks the vault
-     */
-    @Synchronized
-    fun wipeInMemoryKey() {
-        cachedKey?.let {
-            Arrays.fill(it, 0.toByte())
-            cachedKey = null
-        }
     }
 }

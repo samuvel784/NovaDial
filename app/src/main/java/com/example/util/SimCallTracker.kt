@@ -18,7 +18,6 @@
 package com.example.util
 
 import android.content.Context
-import android.telephony.SubscriptionManager
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
@@ -131,15 +130,5 @@ object SimCallTracker {
         } catch (_: Exception) {}
 
         return null
-    }
-
-    fun isMultiSimActive(context: Context): Boolean {
-        return try {
-            val subManager = context.applicationContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
-            val count = subManager?.activeSubscriptionInfoList?.size ?: 0
-            count > 1
-        } catch (_: Exception) {
-            false
-        }
     }
 }

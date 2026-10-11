@@ -25,7 +25,6 @@ import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.media.ToneGenerator
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -33,7 +32,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -56,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.CallManager
 import com.example.ContactCache
 import com.example.R
@@ -67,13 +64,16 @@ import com.example.model.CallType
 import com.example.ui.components.*
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.ContactRingtonePrefs
+import com.example.util.MultiSimManager
 import com.example.util.RichHapticEngine
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.milliseconds
 
 const val MAX_WIDGET_FAVORITES = 6
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
     viewModel: DialerViewModel,
@@ -86,6 +86,8 @@ fun MainScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val preferredSim by viewModel.preferredSim
+    // Real, callable SIMs only — never placeholder slots. Size drives the "ask which SIM?" logic.
+    val callableSims = remember(context) { MultiSimManager.getCallableSims(context) }
     val blockedNumbersEntities by viewModel.blockedNumbersFlow.collectAsStateWithLifecycle()
     val blockedNumbers = remember(blockedNumbersEntities) { blockedNumbersEntities.map { it.number } }
 
@@ -97,6 +99,8 @@ fun MainScreen(
     var isSettingsVisible by viewModel.isSettingsVisible
     var isCallActive by viewModel.isCallActive
     var isCallMinimized by viewModel.isCallMinimized
+    // Which settings page the panel should open on (13 = Emergency SOS).
+    var settingsInitialTab by remember { mutableIntStateOf(0) }
 
     val favoriteContacts by viewModel.favoriteContacts.collectAsStateWithLifecycle()
     val dialpadMatches by viewModel.dialpadMatches.collectAsStateWithLifecycle()
@@ -246,7 +250,7 @@ fun MainScreen(
             }
         } else {
             if (isCallActive) {
-                delay(650)
+                delay(650.milliseconds)
             }
             isCallActive = false
         }
@@ -278,7 +282,10 @@ fun MainScreen(
 
         val targetSim = simChoice ?: preferredSim
         val isEmergency = CallManager.isEmergencyNumber(number)
-        if (targetSim == "Ask" && !isEmergency) {
+        // Only prompt when the device really has two callable SIMs and the user asked to be prompted.
+        // A single-SIM device must never show a "SIM 1 / SIM 2" chooser.
+        val needsSimChoice = !isEmergency && targetSim == "Ask" && callableSims.size >= 2
+        if (needsSimChoice) {
             pendingCallName = resolvedName
             pendingCallNumber = number
             showSimSelectDialog = true
@@ -292,11 +299,17 @@ fun MainScreen(
                 }
             }
         } else {
+            val effectiveSim = when {
+                isEmergency -> "Ask"
+                // Single SIM: dial it directly instead of asking the user to choose.
+                targetSim == "Ask" && callableSims.size == 1 -> "SIM ${callableSims.first().slotIndex + 1}"
+                else -> targetSim
+            }
             callingContactName = resolvedName
             callingContactNumber = number
             isCallActive = true
             CallManager.setCallerName(resolvedName)
-            CallManager.placeCall(context, number, if (isEmergency) "Ask" else targetSim)
+            CallManager.placeCall(context, number, effectiveSim)
 
             if (resolvedName == "Unknown" || resolvedName.isEmpty() || resolvedName == number) {
                 coroutineScope.launch {
@@ -313,7 +326,11 @@ fun MainScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets.safeDrawing
+        // Keep the top/cutout/IME insets on the content, but let the bottom navigation bar handle
+        // its own gesture-bar inset so the tabs sit flush with the bottom of the screen.
+        contentWindowInsets = WindowInsets.safeDrawing.only(
+            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+        )
     ) { paddingValues ->
         val tabSlots = listOf("HOME", "RECENTS", "FAVORITES")
         val currentSlotKey = tabSlots.getOrElse(selectedTab) { "HOME" }
@@ -331,6 +348,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues)
+                .imePadding()
         ) {
             if (showProminentDisclosure) {
                 AlertDialog(
@@ -370,16 +388,18 @@ fun MainScreen(
                 )
             }
 
-            if (showSimSelectDialog) {
+            if (showSimSelectDialog && callableSims.size >= 2) {
                 SimSelectDialog(
                     context = context,
                     pendingCallNumber = pendingCallNumber,
+                    sims = callableSims,
                     onDismiss = { showSimSelectDialog = false },
                     onSimSelected = { simLabel ->
                         showSimSelectDialog = false
                         callingContactName = pendingCallName
                         callingContactNumber = pendingCallNumber
                         isCallActive = true
+                        CallManager.setCallerName(pendingCallName)
                         CallManager.placeCall(context, pendingCallNumber, simLabel)
                     }
                 )
@@ -403,7 +423,10 @@ fun MainScreen(
                         searchQuery = searchQuery,
                         onQueryChange = { viewModel.onSearchQueryChange(it) },
                         menuVisible = currentSlotKey == "HOME",
-                        onMenuClick = { isSettingsVisible = true }
+                        onMenuClick = {
+                            settingsInitialTab = 0
+                            isSettingsVisible = true
+                        }
                     )
                 }
 
@@ -432,15 +455,24 @@ fun MainScreen(
                     ) { page ->
                         when (tabSlots.getOrElse(page) { "HOME" }) {
                             "HOME" -> {
-                                val allCallHistory by viewModel.allCallHistoryFlow.collectAsStateWithLifecycle()
-                                HomeTabContent(
+                                ContactsTabContent(
                                     viewModel = viewModel,
                                     favoriteContacts = favoriteContacts,
-                                    recentCalls = allCallHistory.take(6),
+                                    cardStyle = ContactCardStyle.HOME,
                                     onCallClick = { initiateCall(it.name, it.number, it.label) },
-                                    onContactClick = { initiateCall(it.name, it.number, it.label) },
-                                    onOpenKeypad = { isDialpadVisible = true },
-                                    onOpenSettings = { isSettingsVisible = true }
+                                    onAddContactClick = { isAddContactDialogVisible = true },
+                                    onToggleFavorite = { contact -> viewModel.toggleFavorite(contact.number, !contact.favorite) },
+                                    hasPermission = hasContactsPermission,
+                                    isLoading = isLoadingPermissions,
+                                    onRequestPermission = { showProminentDisclosure = true },
+                                    onEditContact = {
+                                        oldContactToEdit = it
+                                        editContactName = it.name
+                                        editContactNumber = it.number
+                                        editContactLabel = it.label
+                                        isEditContactDialogVisible = true
+                                    },
+                                    onDeleteContact = { viewModel.deleteContact(it) }
                                 )
                             }
                             "RECENTS" -> {
@@ -456,12 +488,11 @@ fun MainScreen(
                                 )
                             }
                             "CONTACTS" -> {
-                                val contactsPaged = viewModel.contactsPaged.collectAsLazyPagingItems()
                                 val favoriteContacts by viewModel.favoriteContacts.collectAsStateWithLifecycle()
                                 ContactsTabContent(
                                     viewModel = viewModel,
-                                    contactsPaged = contactsPaged,
                                     favoriteContacts = favoriteContacts,
+                                    cardStyle = ContactCardStyle.HOME,
                                     onCallClick = { initiateCall(it.name, it.number, it.label) },
                                     onAddContactClick = { isAddContactDialogVisible = true },
                                     onToggleFavorite = { contact -> viewModel.toggleFavorite(contact.number, !contact.favorite) },
@@ -479,12 +510,11 @@ fun MainScreen(
                                 )
                             }
                             "FAVORITES" -> {
-                                val contactsPaged = viewModel.contactsPaged.collectAsLazyPagingItems()
                                 val favoriteContacts by viewModel.favoriteContacts.collectAsStateWithLifecycle()
                                 ContactsTabContent(
                                     viewModel = viewModel,
-                                    contactsPaged = contactsPaged,
                                     favoriteContacts = favoriteContacts,
+                                    cardStyle = ContactCardStyle.FAVORITES,
                                     onCallClick = { initiateCall(it.name, it.number, it.label) },
                                     onAddContactClick = { isAddContactDialogVisible = true },
                                     onToggleFavorite = { contact -> viewModel.toggleFavorite(contact.number, !contact.favorite) },
@@ -545,7 +575,7 @@ fun MainScreen(
                             },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(end = 18.dp, bottom = 78.dp),
+                                .padding(end = 18.dp, bottom = 96.dp),
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
                             shape = MaterialTheme.shapes.extraLarge
@@ -607,11 +637,11 @@ fun MainScreen(
             val fakeCallRingtone = remember { mutableStateOf<Ringtone?>(null) }
             LaunchedEffect(isFakeCallActive, fakeCallState, fakeCallerNumber) {
                 if (isFakeCallActive && fakeCallState == "RINGING") {
-                    val assignment = runCatching { ContactRingtonePrefs.get(context, fakeCallerNumber) }.getOrNull()
+                    val assignment = runCatching { ContactRingtonePrefs.find(context, fakeCallerNumber) }.getOrNull()
                     if (assignment != null && assignment.ringtoneUri.isNotBlank()) {
                         try {
                             fakeCallRingtone.value?.stop()
-                            fakeCallRingtone.value = RingtoneManager.getRingtone(context, Uri.parse(assignment.ringtoneUri))?.apply { play() }
+                            fakeCallRingtone.value = RingtoneManager.getRingtone(context, assignment.ringtoneUri.toUri())?.apply { play() }
                         } catch (_: Exception) {}
                     }
                 } else {
@@ -627,18 +657,19 @@ fun MainScreen(
 
             AnimatedVisibility(
                 visible = isSettingsVisible && !isFakeCallActive && (!isCallActive || isCallMinimized),
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(200, easing = FastOutSlowInEasing)
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
                 ) + fadeIn(animationSpec = tween(150)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(150, easing = FastOutLinearInEasing)
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(160, easing = FastOutLinearInEasing)
                 ) + fadeOut(animationSpec = tween(120))
             ) {
                 SettingsPanel(
                     viewModel = viewModel,
-                    onClose = { isSettingsVisible = false }
+                    onClose = { isSettingsVisible = false },
+                    initialTab = settingsInitialTab
                 )
             }
 

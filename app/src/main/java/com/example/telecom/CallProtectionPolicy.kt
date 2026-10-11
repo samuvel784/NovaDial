@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 MovStore
+ * Copyright (C) 2026 NovaDial contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -51,7 +51,7 @@ object CallProtectionPolicy {
                 if (isVip || isFavorite) {
                     return CallEvaluationResult(shouldSilence = false, isVip = isVip, reason = "Allowed by VIP/Favorite override in Focus Mode")
                 }
-                return CallEvaluationResult(shouldSilence = true, isVip = isVip, reason = "Focus Mode: Silence All active")
+                return CallEvaluationResult(shouldSilence = true, isVip = false, reason = "Focus Mode: Silence All active")
             }
             FocusMode.VIP_ONLY -> {
                 if (isVip) {

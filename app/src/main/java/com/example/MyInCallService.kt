@@ -18,6 +18,7 @@ import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -30,10 +31,14 @@ import androidx.core.app.Person
 import com.example.data.AppDatabase
 import com.example.model.AppSetting
 import com.example.model.CallRecording
+import com.example.telecom.CallDecisionStore
 import com.example.telecom.CallerAnnouncerManager
+import com.example.telecom.RingingPolicy
+import com.example.security.IntentGuard
 import com.example.ui.components.getCurrentLocale
 import com.example.util.CallAudioHelper
 import com.example.util.CallAudioRecorder
+import com.example.util.ContactRingtonePrefs
 import com.example.util.DynamicIslandOverlayManager
 import com.example.util.FlashLightManager
 import com.example.util.RecordingFeedbackHelper
@@ -45,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import androidx.core.net.toUri
 
 class MyInCallService : InCallService() {
 
@@ -76,29 +82,73 @@ class MyInCallService : InCallService() {
         } catch (_: Exception) {}
     }
 
+    /**
+     * True when the platform or the screening service asked for this call to stay
+     * silent. On Android 10+ the platform sets [Call.EXTRA_SILENT_RINGING_REQUESTED];
+     * older versions (and NovaDial's own screening service) use [CallDecisionStore].
+     */
+    private fun isCallSilenced(call: Call?): Boolean {
+        val number = call?.details?.handle?.schemeSpecificPart ?: ""
+        val requested = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            @Suppress("DEPRECATION")
+            call?.details?.extras?.getBoolean(Call.EXTRA_SILENT_RINGING_REQUESTED, false) == true
+        } else {
+            false
+        }
+        return requested || CallDecisionStore.wasSilenced(number)
+    }
+
+    /** True if the ringtone URI can actually be opened (file may have been moved/deleted). */
+    private fun isRingtoneUriReadable(uri: Uri): Boolean = try {
+        when (uri.scheme?.lowercase()) {
+            "content", "android.resource", "file" -> contentResolver.openInputStream(uri)?.use { true } ?: false
+            else -> RingtoneManager.getRingtone(this, uri) != null
+        }
+    } catch (_: Exception) {
+        false
+    }
+
     @Synchronized
-    private fun startRinging() {
+    private fun startRinging(call: Call?) {
         try {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            val ringerMode = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
-            if (ringerMode == AudioManager.RINGER_MODE_SILENT) return
+            val androidRinger = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+            val number = call?.details?.handle?.schemeSpecificPart ?: ""
 
-            // 1. Native AOSP ringtone player
-            if (ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+            val decision = RingingPolicy.decide(
+                ringerMode = when (androidRinger) {
+                    AudioManager.RINGER_MODE_SILENT -> RingingPolicy.RingerMode.SILENT
+                    AudioManager.RINGER_MODE_VIBRATE -> RingingPolicy.RingerMode.VIBRATE
+                    else -> RingingPolicy.RingerMode.NORMAL
+                },
+                silentRequestedByScreening = isCallSilenced(call),
+                silencedByRules = CallDecisionStore.wasSilenced(number)
+            )
+
+            // A silenced call: no sound, no vibration. Do not create the players at all.
+            if (!decision.playSound && !decision.vibrate) return
+
+            val assignment = if (number.isNotBlank()) {
+                runCatching { ContactRingtonePrefs.find(this, number) }.getOrNull()
+            } else null
+
+            // 1. Ringtone player (contact ringtone when assigned, else the system default)
+            if (decision.playSound) {
                 if (ringtone == null) {
-                    val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE)
+                    val contactUri = assignment?.ringtoneUri
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { it.toUri() }
+                        ?.takeIf { isRingtoneUriReadable(it) }
+                    val uri = contactUri
+                        ?: RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE)
                         ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                     ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            audioAttributes = AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .setLegacyStreamType(AudioManager.STREAM_RING)
-                                .build()
-                        } else {
-                            @Suppress("DEPRECATION")
-                            streamType = AudioManager.STREAM_RING
-                        }
+                        // minSdk 24 > LOLLIPOP (21); AudioAttributes is always available.
+                        audioAttributes = AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .setLegacyStreamType(AudioManager.STREAM_RING)
+                            .build()
                     }
                 }
                 if (ringtone?.isPlaying == false) {
@@ -109,28 +159,41 @@ class MyInCallService : InCallService() {
                 }
             }
 
-            // 2. Native hardware vibration
-            if (ringerMode == AudioManager.RINGER_MODE_NORMAL || ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
-                if (vibrator == null) {
-                    vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+            // 2. Hardware vibration (contact pattern when assigned, else the default pattern)
+            if (decision.vibrate) {
+                val rawPattern = assignment?.pattern
+                    ?.let { ContactRingtonePrefs.patternTimings(it) }
+                    ?: longArrayOf(0, 1000, 1000, 1000)
+                val pattern = RingingPolicy.ringLoopTimings(rawPattern)
+                if (pattern != null) {
+                    if (vibrator == null) {
+                        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+                        } else {
+                            @Suppress("DEPRECATION")
+                            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val effect = VibrationEffect.createWaveform(pattern, 0)
+                        val audioAttrs = AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setLegacyStreamType(AudioManager.STREAM_RING)
+                            .build()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val vibrationAttrs = VibrationAttributes.Builder()
+                                .setUsage(VibrationAttributes.USAGE_RINGTONE)
+                                .build()
+                            vibrator?.vibrate(effect, vibrationAttrs)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            vibrator?.vibrate(effect, audioAttrs)
+                        }
                     } else {
                         @Suppress("DEPRECATION")
-                        getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                        vibrator?.vibrate(pattern, 0)
                     }
-                }
-                val pattern = longArrayOf(0, 1000, 1000, 1000)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val effect = VibrationEffect.createWaveform(pattern, 0)
-                    val audioAttrs = AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setLegacyStreamType(AudioManager.STREAM_RING)
-                        .build()
-                    vibrator?.vibrate(effect, audioAttrs)
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator?.vibrate(pattern, 0)
                 }
             }
         } catch (_: Exception) {}
@@ -225,7 +288,7 @@ class MyInCallService : InCallService() {
                 val isMuted = CallManager.audioState.value?.isMuted ?: false
                 CallManager.setMuted(!isMuted)
                 val activeCall = CallManager.currentCall.value
-                if (activeCall != null && activeCall.state in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
+                if (activeCall != null && activeCall.safeState in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
                     showActiveCallNotification(activeCall)
                 } else {
                     nm.cancel(NOTIFICATION_ID_ACTIVE)
@@ -235,7 +298,7 @@ class MyInCallService : InCallService() {
                 val isSpeaker = (CallManager.audioState.value?.route ?: CallAudioState.ROUTE_EARPIECE) == CallAudioState.ROUTE_SPEAKER
                 CallManager.setSpeaker(!isSpeaker)
                 val activeCall = CallManager.currentCall.value
-                if (activeCall != null && activeCall.state in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
+                if (activeCall != null && activeCall.safeState in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
                     showActiveCallNotification(activeCall)
                 } else {
                     nm.cancel(NOTIFICATION_ID_ACTIVE)
@@ -262,7 +325,7 @@ class MyInCallService : InCallService() {
         handleCallState(call)
 
         call.registerCallback(object : Call.Callback() {
-            private var wasRinging = (call.state == Call.STATE_RINGING)
+            private var wasRinging = (call.safeState == Call.STATE_RINGING)
 
             override fun onStateChanged(c: Call, state: Int) {
                 super.onStateChanged(c, state)
@@ -307,7 +370,7 @@ class MyInCallService : InCallService() {
         FlashLightManager.stopFlashing(this)
         nm.cancel(NOTIFICATION_ID_INCOMING)
 
-        val remainingActiveCalls = CallManager.calls.value.filter { it.state != Call.STATE_DISCONNECTED }
+        val remainingActiveCalls = CallManager.calls.value.filter { it.safeState != Call.STATE_DISCONNECTED }
         if (remainingActiveCalls.isEmpty()) {
             releaseWakeLock()
             DynamicIslandOverlayManager.stopCallMonitoring()
@@ -329,11 +392,13 @@ class MyInCallService : InCallService() {
         }
     }
 
+    @Deprecated("Deprecated in the platform; kept so older Android versions still work.")
+    @Suppress("DEPRECATION")
     override fun onCallAudioStateChanged(audioState: CallAudioState?) {
         super.onCallAudioStateChanged(audioState)
         CallManager.updateAudioState(audioState)
         val activeCall = CallManager.currentCall.value
-        if (activeCall != null && activeCall.state in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
+        if (activeCall != null && activeCall.safeState in listOf(Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING, Call.STATE_HOLDING)) {
             showActiveCallNotification(activeCall)
         } else {
             nm.cancel(NOTIFICATION_ID_ACTIVE)
@@ -341,10 +406,10 @@ class MyInCallService : InCallService() {
     }
 
     private fun handleCallState(call: Call) {
-        when (call.state) {
+        when (call.safeState) {
             Call.STATE_RINGING -> {
                 val hasExistingActiveCall = CallManager.calls.value.any {
-                    it != call && (it.state == Call.STATE_ACTIVE || it.state == Call.STATE_HOLDING || it.state == Call.STATE_DIALING)
+                    it != call && (it.safeState == Call.STATE_ACTIVE || it.safeState == Call.STATE_HOLDING || it.safeState == Call.STATE_DIALING)
                 }
                 if (hasExistingActiveCall) {
                     // Call Waiting: Suppress full speaker ringtone and camera flashlight to protect user's hearing
@@ -352,8 +417,10 @@ class MyInCallService : InCallService() {
                     playCallWaitingTone()
                     showIncomingCallNotification(call, isCallWaiting = true)
                 } else {
-                    FlashLightManager.startFlashing(this)
-                    startRinging()
+                    if (!isCallSilenced(call)) {
+                        FlashLightManager.startFlashing(this)
+                    }
+                    startRinging(call)
                     showIncomingCallNotification(call, isCallWaiting = false)
                     launchCallScreen(answerOnLaunch = false)
                     announcer?.announceIncomingCall(
@@ -386,6 +453,7 @@ class MyInCallService : InCallService() {
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
                             Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     putExtra(EXTRA_SHOW_CALL, true)
+                    putExtra(IntentGuard.EXTRA_GUARD_TOKEN, IntentGuard.token(this@MyInCallService))
                 },
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
@@ -407,6 +475,7 @@ class MyInCallService : InCallService() {
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                 putExtra(EXTRA_SHOW_CALL, true)
                 putExtra(EXTRA_ANSWER, true)
+                putExtra(IntentGuard.EXTRA_GUARD_TOKEN, IntentGuard.token(this@MyInCallService))
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -433,7 +502,7 @@ class MyInCallService : InCallService() {
     }
 
     private fun showActiveCallNotification(call: Call) {
-        if (call.state == Call.STATE_DISCONNECTED || CallManager.calls.value.none { it == call && it.state != Call.STATE_DISCONNECTED }) {
+        if (call.safeState == Call.STATE_DISCONNECTED || CallManager.calls.value.none { it == call && it.safeState != Call.STATE_DISCONNECTED }) {
             nm.cancel(NOTIFICATION_ID_ACTIVE)
             return
         }
@@ -445,6 +514,7 @@ class MyInCallService : InCallService() {
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra(EXTRA_SHOW_CALL, true)
+                putExtra(IntentGuard.EXTRA_GUARD_TOKEN, IntentGuard.token(this@MyInCallService))
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -518,7 +588,7 @@ class MyInCallService : InCallService() {
         val callBackPendingIntent = PendingIntent.getActivity(
             this, 302,
             Intent(Intent.ACTION_DIAL).apply {
-                data = Uri.parse("tel:$number")
+                data = "tel:$number".toUri()
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -623,6 +693,7 @@ class MyInCallService : InCallService() {
                         Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                 putExtra(EXTRA_SHOW_CALL, true)
+                putExtra(IntentGuard.EXTRA_GUARD_TOKEN, IntentGuard.token(this@MyInCallService))
                 if (answerOnLaunch) putExtra(EXTRA_ANSWER, true)
             }
             startActivity(intent)

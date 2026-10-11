@@ -18,8 +18,10 @@
 package com.example
 
 import android.accounts.AccountManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
+import android.os.Build
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone
@@ -30,6 +32,7 @@ import com.example.ui.theme.*
 import com.example.util.SimCallTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import java.text.Normalizer
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,11 +61,6 @@ internal fun nameToT9(name: String): String {
             )
         }
     }
-}
-
-internal fun getNormalizedPhoneNumberKey(number: String): String {
-    val digits = number.filter { it.isDigit() }
-    return if (digits.length >= 10) digits.takeLast(10) else digits
 }
 
 internal fun getPhoneNumberQualityScore(number: String): Int {
@@ -215,8 +213,8 @@ suspend fun DialerRepository.fetchSystemContacts(): List<Contact> = withContext(
             val fav = favIdx != -1 && c.getInt(favIdx) == 1
             val photoUri = if (photoIdx != -1) c.getString(photoIdx) ?: "" else ""
             val contactIdStr = if (cidIdx != -1) c.getString(cidIdx) ?: "" else ""
-            val emailsForContact = emailMap[contactIdStr] ?: emptyList()
-            val addressesForContact = addressMap[contactIdStr] ?: emptyList()
+            val emailsForContact = emailMap[contactIdStr].orEmpty()
+            val addressesForContact = addressMap[contactIdStr].orEmpty()
             val accName = if (accNameIdx != -1) c.getString(accNameIdx) ?: "" else ""
             val accType = if (accTypeIdx != -1) c.getString(accTypeIdx) ?: "" else ""
             val phoneType = if (typeIdx != -1) c.getInt(typeIdx) else Phone.TYPE_MOBILE
@@ -229,7 +227,7 @@ suspend fun DialerRepository.fetchSystemContacts(): List<Contact> = withContext(
                 else -> "Mobile"
             }
 
-            val pair = colors[Math.abs(name.hashCode()) % colors.size]
+            val pair = colors[abs(name.hashCode()) % colors.size]
             val uniqueId = if (contactIdVal != 0L) contactIdVal else if (idVal != 0L) idVal else (contactMap.size + 1).toLong()
             val personKey = if (contactIdVal != 0L) "c-$contactIdVal" else if (rawIdVal != 0L) "r-$rawIdVal" else "n-${name.lowercase(Locale.ROOT).trim()}"
             val labeledNum = LabeledNumber(number = num, label = phoneLabel, isPrimary = true)
@@ -341,6 +339,9 @@ suspend fun DialerRepository.fetchAvailableAccounts(): List<ContactAccount> = wi
     list
 }
 
+// getActiveSubscriptionInfoList() is annotated as requiring READ_PHONE_STATE. This runs only for
+// the dialer (which holds telephony permissions); we fail soft if the permission is missing.
+@SuppressLint("MissingPermission")
 suspend fun DialerRepository.fetchSystemCallLogs(): List<CallRecord> = withContext(Dispatchers.IO) {
     val logs = mutableListOf<CallRecord>()
     val colors = listOf(AvatarBlue to AvatarBlueText, AvatarOrange to AvatarOrangeText, AvatarGreen to AvatarGreenText)
@@ -356,7 +357,7 @@ suspend fun DialerRepository.fetchSystemCallLogs(): List<CallRecord> = withConte
                 val subIdStr = subInfo.subscriptionId.toString()
                 subIdToSlotMap[subIdStr] = slot
                 subInfo.iccId?.takeIf { it.isNotBlank() }?.let { subIdToSlotMap[it] = slot }
-                if (subInfo.cardId > 0) subIdToSlotMap[subInfo.cardId.toString()] = slot
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && subInfo.cardId > 0) subIdToSlotMap[subInfo.cardId.toString()] = slot
                 subIdToSlotMap["sub_${subInfo.subscriptionId}"] = slot
                 subIdToSlotMap["slot_${subInfo.simSlotIndex}"] = slot
                 subIdToSlotMap["sim_${subInfo.simSlotIndex}"] = slot
@@ -368,7 +369,7 @@ suspend fun DialerRepository.fetchSystemCallLogs(): List<CallRecord> = withConte
                     val subIdStr = subInfo.subscriptionId.toString()
                     subIdToSlotMap[subIdStr] = slot
                     subInfo.iccId?.takeIf { it.isNotBlank() }?.let { subIdToSlotMap[it] = slot }
-                    if (subInfo.cardId > 0) subIdToSlotMap[subInfo.cardId.toString()] = slot
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && subInfo.cardId > 0) subIdToSlotMap[subInfo.cardId.toString()] = slot
                     subIdToSlotMap["sub_${subInfo.subscriptionId}"] = slot
                     subIdToSlotMap["slot_${subInfo.simSlotIndex}"] = slot
                     subIdToSlotMap["sim_${subInfo.simSlotIndex}"] = slot
@@ -447,14 +448,14 @@ suspend fun DialerRepository.fetchSystemCallLogs(): List<CallRecord> = withConte
                     phoneAccountId.contains("slot2", ignoreCase = true) ||
                     phoneAccountId.contains(", 2,") ||
                     phoneAccountId.endsWith("_1") ||
-                    (phoneAccountId.equals("1") && !subIdToSlotMap.containsKey("1")) -> 2
+                    (phoneAccountId == "1" && !subIdToSlotMap.containsKey("1")) -> 2
                     phoneAccountId.contains("sim_1", ignoreCase = true) ||
                     phoneAccountId.contains("sim1", ignoreCase = true) ||
                     phoneAccountId.contains("sub_1", ignoreCase = true) ||
                     phoneAccountId.contains("slot_1", ignoreCase = true) ||
                     phoneAccountId.contains("slot1", ignoreCase = true) ||
                     phoneAccountId.contains(", 1,") ||
-                    phoneAccountId.equals("0") ||
+                    phoneAccountId == "0" ||
                     phoneAccountId.endsWith("_0") -> 1
                     else -> 1
                 }
@@ -469,7 +470,7 @@ suspend fun DialerRepository.fetchSystemCallLogs(): List<CallRecord> = withConte
                 val durVal = if (durIdx != -1) cursor.getLong(durIdx) else 0L
 
                 val contactLabel = matchingContact?.label ?: ""
-                val pair = colors[Math.abs(name.hashCode()) % colors.size]
+                val pair = colors[abs(name.hashCode()) % colors.size]
                 val photoUriVal = matchingContact?.photoUri ?: ""
                 logs.add(
                     CallRecord(

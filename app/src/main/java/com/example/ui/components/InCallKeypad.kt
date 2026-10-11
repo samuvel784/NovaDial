@@ -167,10 +167,10 @@ fun InCallKeypad(
 @Composable
 fun InCallKeypadButton(
     key: String,
-    letters: String = "",
-    onClick: () -> Unit,
     avatarShapeType: String,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    letters: String = ""
 ) {
     val context = LocalContext.current
     val isExpressive = LocalM3Expressive.current

@@ -19,7 +19,6 @@ package com.example.ui.components
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -30,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.R
+import androidx.core.net.toUri
 
 @Composable
 fun GeneralSettingsSupportCard(
@@ -57,7 +57,7 @@ fun GeneralSettingsSupportCard(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/samuvel784/NovaDial"))
+                    val intent = Intent(Intent.ACTION_VIEW, "https://github.com/samuvel784/NovaDial".toUri())
                     try { context.startActivity(intent) } catch (e: Exception) {}
                 },
                 modifier = Modifier.fillMaxWidth(),

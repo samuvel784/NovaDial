@@ -18,7 +18,6 @@
 package com.example
 
 import android.app.KeyguardManager
-import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -26,7 +25,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.telecom.TelecomManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -47,7 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.example.widget.FavoritesWidgetProvider
+import com.example.security.IntentGuard
 import com.example.ui.MainScreen
 import com.example.ui.theme.AppShapes
 import com.example.ui.theme.MyApplicationTheme
@@ -60,12 +58,6 @@ class MainActivity : ComponentActivity() {
     private var isAuthenticating = false
     private var isAppStopped = false
     private var isLaunchedForCall = false
-
-    val recordAudioPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        viewModel.hasRecordAudioPermission.value = isGranted
-    }
 
     private val authLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -96,7 +88,7 @@ class MainActivity : ComponentActivity() {
         val hasRealCall = CallManager.currentCall.value != null ||
                 CallManager.calls.value.isNotEmpty() ||
                 viewModel.isFakeCallActive.value
-        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+        if (hasTrustedToken() || (hasRealCall && isAppAuthenticated.value)) {
             setLockScreenVisibility(true)
         }
 
@@ -137,9 +129,11 @@ class MainActivity : ComponentActivity() {
                         val hasActiveCall = CallManager.currentCall.value != null ||
                                 CallManager.calls.value.isNotEmpty() ||
                                 viewModel.isFakeCallActive.value
-                        if (hasActiveCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+                        if (hasTrustedToken() || (hasActiveCall && isAppAuthenticated.value)) {
                             isAppAuthenticated.value = true
                             setLockScreenVisibility(true)
+                        } else if (hasActiveCall) {
+                            // A real call is in progress but this intent is not ours: stay locked.
                         } else if (viewModel.isBiometricLockEnabled.value) {
                             if (!isAuthenticating && !isAppAuthenticated.value) {
                                 triggerDeviceAuthentication()
@@ -286,10 +280,14 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         volumeControlStream = AudioManager.STREAM_VOICE_CALL
         CallManager.setAppInForeground(true)
+        // Re-arm the opt-in shake-to-SOS watch whenever the app is opened.
+        if (com.example.telecom.EmergencySosPrefs.isShakeToTriggerEnabled(this)) {
+            com.example.telecom.EmergencySosService.start(this)
+        }
         val hasRealCall = CallManager.currentCall.value != null ||
                 CallManager.calls.value.isNotEmpty() ||
                 viewModel.isFakeCallActive.value
-        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+        if (hasTrustedToken() || (hasRealCall && isAppAuthenticated.value)) {
             isAppAuthenticated.value = true
             setLockScreenVisibility(true)
         } else if (isAppStopped) {
@@ -305,11 +303,12 @@ class MainActivity : ComponentActivity() {
         val hasRealCall = CallManager.currentCall.value != null ||
                 CallManager.calls.value.isNotEmpty() ||
                 viewModel.isFakeCallActive.value
-        if (hasRealCall || intent?.getBooleanExtra("SHOW_CALL_SCREEN", false) == true) {
+        if (hasTrustedToken() || (hasRealCall && isAppAuthenticated.value)) {
             setLockScreenVisibility(true)
         }
     }
 
+    @Suppress("DEPRECATION") // KeyguardManager.createConfirmDeviceCredentialIntent; BiometricPrompt needs androidx.biometric
     private fun triggerDeviceAuthentication() {
         if (isAuthenticating) return
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager ?: return
@@ -343,11 +342,8 @@ class MainActivity : ComponentActivity() {
             if (viewModel.isBiometricLockEnabled.value) {
                 isAppAuthenticated.value = false
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                finishAndRemoveTask()
-            } else {
-                finish()
-            }
+            // minSdk 24 > LOLLIPOP (21); the legacy finish() fallback was dead code.
+            finishAndRemoveTask()
         }
     }
 
@@ -382,6 +378,10 @@ class MainActivity : ComponentActivity() {
         viewModel.isDefaultDialer.value = com.example.util.CallScreenPermissionHelper.isDefaultDialer(context)
     }
 
+    /** True when the current intent carries NovaDial's private per-install token. */
+    private fun hasTrustedToken(intent: Intent? = this.intent): Boolean =
+        IntentGuard.isValid(this, intent?.getStringExtra(IntentGuard.EXTRA_GUARD_TOKEN))
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -391,26 +391,11 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
 
-        // Home-screen favourites widget: tap a row to call that contact
-        val widgetNumber = intent.getStringExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NUMBER)
-        if (!widgetNumber.isNullOrBlank()) {
-            intent.removeExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NUMBER)
-            intent.removeExtra(FavoritesWidgetProvider.EXTRA_WIDGET_CALL_NAME)
-            isAppAuthenticated.value = true
-            setLockScreenVisibility(true)
-            val canCall = ContextCompat.checkSelfPermission(
-                this, android.Manifest.permission.CALL_PHONE
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            if (canCall) {
-                CallManager.placeCall(this, widgetNumber, viewModel.preferredSim.value)
-            } else {
-                // No call permission yet: prefill the dialpad so the user can tap call
-                viewModel.dialpadInput.value = widgetNumber
-                viewModel.selectTabBySlotKey("DIALPAD")
-            }
-        }
+        // Only intents carrying our private per-install token may perform sensitive
+        // actions. MainActivity is exported, so any app can send it an explicit intent.
+        val trusted = IntentGuard.isValid(this, intent.getStringExtra(IntentGuard.EXTRA_GUARD_TOKEN))
 
-        if (intent.getBooleanExtra("TRIGGER_FAKE_CALL", false)) {
+        if (intent.getBooleanExtra("TRIGGER_FAKE_CALL", false) && trusted) {
             if (viewModel.isFakeCallSimulatorEnabled.value) {
                 viewModel.isFakeCallActive.value = true
                 viewModel.fakeCallerName.value = intent.getStringExtra("FAKE_CALLER_NAME") ?: "Unknown"
@@ -423,7 +408,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (intent.getBooleanExtra("ANSWER_ON_LAUNCH", false) || intent.action == MyInCallService.ACTION_ANSWER) {
+        val isAnswerRequest = intent.getBooleanExtra("ANSWER_ON_LAUNCH", false) ||
+                intent.action == MyInCallService.ACTION_ANSWER
+        if (isAnswerRequest && trusted) {
             CallManager.answer()
             isLaunchedForCall = true
             viewModel.isLaunchedForCall.value = true
@@ -432,10 +419,12 @@ class MainActivity : ComponentActivity() {
             setLockScreenVisibility(true)
         }
 
+        // A live call must not unlock the whole app for an arbitrary caller: only our
+        // own call-screen intent (verified by the token) may surface it over the lock.
         val hasGenuineActiveCall = CallManager.currentCall.value != null ||
                 CallManager.calls.value.isNotEmpty() ||
                 viewModel.isFakeCallActive.value
-        if (hasGenuineActiveCall) {
+        if (hasGenuineActiveCall && trusted) {
             isLaunchedForCall = true
             viewModel.isLaunchedForCall.value = true
             viewModel.isCallMinimized.value = false
@@ -454,7 +443,7 @@ class MainActivity : ComponentActivity() {
                 val number = data.schemeSpecificPart ?: ""
                 if (number.isNotEmpty()) {
                     // SEC-02: Populate dialpad preview instead of placing call directly to avoid confused deputy attacks
-                    viewModel.dialpadInput.value = number
+                    viewModel.onDialpadInputChange(number)
                     viewModel.selectTabBySlotKey("DIALPAD")
                 }
             }

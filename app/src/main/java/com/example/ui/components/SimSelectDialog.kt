@@ -21,7 +21,6 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material3.*
@@ -39,7 +38,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.R
 import com.example.ui.theme.AppShapes
-import com.example.util.MultiSimManager
 import com.example.util.RichHapticEngine
 import com.example.util.SimAccountInfo
 
@@ -47,36 +45,10 @@ import com.example.util.SimAccountInfo
 fun SimSelectDialog(
     context: Context,
     pendingCallNumber: String,
+    sims: List<SimAccountInfo>,
     onDismiss: () -> Unit,
     onSimSelected: (simLabel: String) -> Unit
 ) {
-    val realSimList = remember(context) { MultiSimManager.getActiveSimAccounts(context) }
-
-    // DUAL SIM FIX: Always provide slots for SIM 1 and SIM 2 so the user is never locked out
-    val displaySimList = remember(realSimList) {
-        if (realSimList.size >= 2) {
-            realSimList.take(2)
-        } else {
-            val sim1 = realSimList.getOrNull(0) ?: SimAccountInfo(
-                slotIndex = 0,
-                subscriptionId = 1,
-                displayName = "SIM 1",
-                carrierName = "SIM 1",
-                number = "",
-                accountHandle = null
-            )
-            val sim2 = realSimList.getOrNull(1) ?: SimAccountInfo(
-                slotIndex = 1,
-                subscriptionId = 2,
-                displayName = "SIM 2",
-                carrierName = "SIM 2",
-                number = "",
-                accountHandle = null
-            )
-            listOf(sim1, sim2)
-        }
-    }
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -136,8 +108,12 @@ fun SimSelectDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        displaySimList.forEachIndexed { index, sim ->
+                        sims.forEachIndexed { index, sim ->
                             val simLabel = "SIM ${sim.slotIndex + 1}"
+                            val simName = sim.displayName
+                                .takeIf { it.isNotBlank() && !it.equals(simLabel, ignoreCase = true) }
+                                ?: sim.carrierName.takeIf { it.isNotBlank() }
+                                ?: simLabel
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
@@ -179,13 +155,15 @@ fun SimSelectDialog(
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = simLabel,
+                                        text = simName,
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                         textAlign = TextAlign.Center
                                     )
                                     Text(
-                                        text = sim.carrierName.ifEmpty { sim.displayName },
+                                        text = simLabel,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,

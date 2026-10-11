@@ -37,7 +37,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.ContactCache
 import com.example.model.Contact
-import com.example.model.getAvatarShape
 import com.example.model.getInitials
 import com.example.ui.theme.AppShapes
 

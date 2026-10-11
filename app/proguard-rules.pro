@@ -18,10 +18,11 @@
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable,MethodParameters,ElementValuePairs,RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
 
 # =========================================================
-# 1. BRUTE-FORCE APP PRESERVATION (Fool-proof safety net)
+# 1. APP PRESERVATION (Scoped to specific packages)
 # =========================================================
--keep class com.example.** { *; }
--keepclassmembers class com.example.** { *; }
+-keep class com.example.model.** { *; }
+-keep class com.example.data.** { *; }
+-keep class com.example.ui.viewmodel.** { *; }
 
 # =========================================================
 # 2. DATABASE & SQLCIPHER ENCRYPTION (Critical for Vault)
@@ -54,9 +55,10 @@
 # =========================================================
 # 3. EXTERNAL LIBRARIES (Coil)
 # =========================================================
--keep class coil.** { *; }
+# Coil performs no reflection-based (de)serialization of its own types, so a blanket
+# "-keep class coil.** { *; }" is unnecessary and keeps hundreds of classes alive.
+# We only suppress the harmless missing-class warnings.
 -dontwarn coil.**
--keepclassmembers class * implements coil.request.Request { *; }
 
 # =========================================================
 # 4. ENUMS & TYPE CONVERTERS (Prevents SQLite parsing crashes)
@@ -66,7 +68,7 @@
     public static ** valueOf(java.lang.String);
     public **[] $VALUES;
 }
--keep class **.CallType { *; }
+-keep class com.example.model.CallType { *; }
 
 # =========================================================
 # 5. ANDROID SYSTEM COMPONENTS (Telephony & Broadcasts)
@@ -113,15 +115,14 @@
     private static final java.io.ObjectStreamField[] serialPersistentFields;
     private void writeObject(java.io.ObjectOutputStream);
     private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
+    java.lang.Object writeReferenced();
     java.lang.Object readResolve();
 }
 
 # =========================================================
 # 9. VIEWMODELS
 # =========================================================
--keep class * extends androidx.lifecycle.ViewModel { *; }
--keep class * extends androidx.lifecycle.AndroidViewModel { *; }
--keepclassmembers class * extends androidx.lifecycle.ViewModel {
+-keep class com.example.ui.viewmodel.* { *; }
+-keepclassmembers class com.example.ui.viewmodel.* {
     <init>(...);
 }

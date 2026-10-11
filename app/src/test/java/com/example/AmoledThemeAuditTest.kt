@@ -3,7 +3,6 @@ package com.example
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.test.core.app.ApplicationProvider
-import com.example.ui.theme.LocalAmoledMode
 import com.example.ui.theme.getColorSchemeForTheme
 import com.example.ui.viewmodel.DialerViewModel
 import org.junit.Assert.assertEquals

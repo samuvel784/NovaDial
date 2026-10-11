@@ -18,31 +18,17 @@
     <string name="tab_recents">Recientes</string>
     <string name="tab_contacts">Contactos</string>
     <string name="tab_dialpad">Teclado</string>
-    <string name="home_greeting_morning">Buenos días</string>
-    <string name="home_greeting_afternoon">Buenas tardes</string>
-    <string name="home_greeting_evening">Buenas noches</string>
-    <string name="home_recent_activity">Actividad reciente</string>
-    <string name="home_no_recent">Sin llamadas recientes aún</string>
     <string name="home_call_analytics">Análisis de llamadas</string>
     <string name="cat_call_analytics_sub">Total de llamadas, llamadas perdidas e información sobre la duración</string>
-    <string name="tab_voicemail">Buzón de voz</string>
-    <string name="tab_spam_database">Base de datos de Spam</string>
-    <string name="tab_scheduled_reminders">Recordatorios</string>
-    <string name="tab_fake_call_sim">Llamada Falsa</string>
-    <string name="tab_call_notes">Notas de llamadas</string>
-    <string name="tab_slot_left">Casilla izquierda</string>
-    <string name="tab_slot_middle">Casilla central</string>
-    <string name="tab_slot_right">Casilla derecha</string>
 
     <!-- Search & General UI -->
     <string name="search_placeholder">Buscar contactos y números</string>
-    <string name="search_settings_placeholder">Buscar ajustes...</string>
+    <string name="search_settings_placeholder">Buscar ajustes�</string>
     <string name="search_clear">Borrar</string>
     <string name="search_results_count">Resultados de búsqueda (%1$d)</string>
     <string name="no_matching_settings">Sin resultados coincidentes</string>
     <string name="no_matching_settings_desc">Pruebe a buscar términos como Modo oscuro, SIM, Bloqueo o Grabación.</string>
     <string name="no_results_title">No se encontraron resultados</string>
-    <string name="no_results_subtitle">No hay llamadas coincidentes</string>
     <string name="filter_all">Todas</string>
     <string name="filter_missed">Perdidas</string>
     <string name="filter_dialed">Realizadas</string>
@@ -56,48 +42,34 @@
     <string name="call_log_perm_desc">Para acceder, cargar y llamar al historial de llamadas real de su teléfono, habilite el permiso del Registro de llamadas.</string>
 
     <!-- Contacts Management & Details -->
-    <string name="contacts_header">Contactos</string>
     <string name="no_contacts_title">No se encontraron contactos</string>
     <string name="no_contacts_subtitle">Toque \'Añadir nuevo\' para crear un contacto</string>
     <string name="action_add_contact">Añadir contacto</string>
-    <string name="label_name">Nombre</string>
     <string name="label_phone_number">Número de teléfono</string>
     <string name="label_first_name">Nombre</string>
     <string name="label_last_name">Apellido</string>
     <string name="label_email">Correo electrónico</string>
-    <string name="label_type">Tipo</string>
     <string name="label_mobile">Móvil</string>
     <string name="label_home">Casa</string>
     <string name="label_work">Trabajo</string>
     <string name="label_other">Otro</string>
-    <string name="label_notes">Notas</string>
     <string name="label_address">Dirección</string>
-    <string name="label_add_number">+ Añadir número de teléfono</string>
-    <string name="label_add_email">+ Añadir correo electrónico</string>
-    <string name="contact_storage_badge_phone">Teléfono</string>
-    <string name="contact_storage_badge_sim">SIM</string>
-    <string name="contact_storage_badge_google">Google</string>
     <string name="contact_source_select">Seleccionar cuenta</string>
     <string name="contact_source_phone">Almacenamiento del teléfono</string>
     <string name="contact_source_label">Guardar en cuenta</string>
-    <string name="saved_in_account">Guardado en %1$s</string>
     <string name="add_contact_dialog_title">Añadir contacto</string>
     <string name="edit_contact_dialog_title">Editar contacto</string>
-    <string name="contact_multiple_numbers">%1$d números</string>
     <string name="select_number_to_call">Selecciona un número para llamar</string>
     <string name="select_number_to_message">Selecciona un número para enviar mensaje</string>
     <string name="dialog_call_contact">Llamar a %1$s</string>
     <string name="dialog_message_contact">Enviar mensaje a %1$s</string>
 
     <!-- Recents & Call History -->
-    <string name="recents_header">Recientes</string>
     <string name="no_call_log_title">Su registro de llamadas está vacío</string>
     <string name="no_call_log_subtitle">Las llamadas recientes aparecerán aquí</string>
     <string name="clear_call_log_confirm_title">¿Borrar historial de llamadas?</string>
     <string name="clear_call_log_confirm_desc">Esto eliminará permanentemente todos los registros de llamadas de este dispositivo y de otros marcadores. Esta acción no se puede deshacer.</string>
     <string name="clear_history_with_number">Borrar historial con este número</string>
-    <string name="delete_call_log_entry">Eliminar entrada del registro de llamadas</string>
-    <string name="delete_all_call_history">Eliminar todo el historial de llamadas</string>
     <string name="call_type_incoming">Llamada entrante</string>
     <string name="call_type_outgoing">Llamada saliente</string>
     <string name="call_type_missed">Llamada perdida</string>
@@ -105,7 +77,6 @@
     <string name="recent_label_format">Reciente • %1$s</string>
     <string name="calls_count">%1$d llamadas</string>
     <string name="call_count_label">Número de llamadas:</string>
-    <string name="showing_last_5_calls">Mostrando las últimas 5 llamadas</string>
     <string name="call_summary_prefix">Resumen de llamadas de %1$s</string>
     <string name="today_call_summary">Resumen de llamadas de hoy</string>
 
@@ -124,7 +95,6 @@
     <!-- In-Call Actions & States -->
     <string name="btn_answer">Responder</string>
     <string name="btn_decline">Rechazar</string>
-    <string name="btn_hangup">Colgar</string>
     <string name="btn_swap">Cambiar</string>
     <string name="btn_answer_hold">Responder y retener</string>
     <string name="call_status_ongoing">Llamada en curso</string>
@@ -147,9 +117,6 @@
     <string name="action_message">Mensaje</string>
     <string name="action_swipe_call">Llamar</string>
     <string name="action_swipe_message">Mensaje</string>
-    <string name="action_copy_number">Copiar número</string>
-    <string name="action_send_email">Enviar correo</string>
-    <string name="action_open_map">Abrir en Mapas</string>
     <string name="toast_number_copied">Número copiado al portapapeles</string>
     <string name="number_copied">Número copiado</string>
     <string name="send_sms">Enviar SMS</string>
@@ -158,12 +125,10 @@
     <string name="call_waiting_title">Llamada en espera</string>
     <string name="call_waiting_notice">Responder pondrá su llamada actual en espera.</string>
     <string name="call_waiting_incoming_from">Llamada entrante de:</string>
-    <string name="conference">Conferencia (%1$d)</string>
     <string name="caller_verified">Verificado</string>
     <string name="no_answer">Sin respuesta</string>
 
     <!-- Favorites & Voicemail -->
-    <string name="favorites_header">Favoritos</string>
     <string name="no_favorites_title">Aún no hay favoritos</string>
     <string name="no_favorites_subtitle">Marque contactos con estrella para encontrarlos fácilmente</string>
     <string name="voicemail_header">Buzón de voz</string>
@@ -178,7 +143,6 @@
     <string name="cat_calling_accounts">SIM y cuentas de llamada</string>
     <string name="cat_speed_dial_quick_responses">Marcación rápida y respuestas</string>
     <string name="cat_call_blocking">Bloqueo de llamadas y spam</string>
-    <string name="cat_voicemail_tools">Buzón de voz y grabación</string>
     <string name="cat_contacts_data">Contactos y datos</string>
     <string name="cat_advanced_features">Herramientas avanzadas</string>
     <string name="cat_privacy_security_about">Privacidad y acerca de</string>
@@ -188,21 +152,15 @@
     <string name="cat_calling_accounts_sub">Tarjetas SIM, llamada en espera y buzón de voz</string>
     <string name="cat_speed_dial_quick_responses_sub">Marcación rápida y respuestas por SMS</string>
     <string name="cat_call_blocking_sub">Números bloqueados e ID de llamada</string>
-    <string name="cat_voicemail_tools_sub">Directorio de buzón de voz y grabación de alta fidelidad</string>
     <string name="cat_contacts_data_sub">Sincronización, importación y copia de seguridad</string>
     <string name="cat_advanced_features_sub">Grabación de llamadas, notas, llamadas falsas y recordatorios</string>
     <string name="cat_privacy_security_about_sub">Bloqueo de app, seguridad e información</string>
     <string name="settings_title">Ajustes</string>
     <string name="settings_back">Volver</string>
-    <string name="settings_info_utilities">Información y utilidades</string>
 
     <!-- Settings Headers -->
     <string name="header_sim_carrier">CONFIGURACIÓN SIM Y OPERADOR</string>
     <string name="header_incoming_alerts">ALERTAS DE LLAMADAS ENTRANTES</string>
-    <string name="header_threat_intelligence">DETECCIÓN DE AMENAZAS</string>
-    <string name="header_call_blocker">BLOQUEADOR DE LLAMADAS Y FILTROS</string>
-    <string name="header_dialing_shortcuts">ATATACOS DE MARCACIÓN</string>
-    <string name="header_call_decline_messages">MENSAJES DE RECHAZO DE LLAMADAS</string>
     <string name="header_carrier_voicemail">BUZÓN DE VOZ DEL OPERADOR</string>
     <string name="header_contacts_management">GESTIÓN DE CONTACTOS</string>
     <string name="header_data_backup">DATOS Y COPIA DE SEGURIDAD</string>
@@ -215,7 +173,6 @@
     <!-- Settings - General & Appearance -->
     <string name="settings_carrier_call_settings">Ajustes de llamadas del operador</string>
     <string name="settings_carrier_call_settings_sub">Llamada en espera, desvío de llamadas y servicios adicionales</string>
-    <string name="settings_appearance">Apariencia</string>
     <string name="settings_theme_mode">Modo de apariencia</string>
     <string name="settings_theme_mode_sub">Día (blanco), Predeterminado (azul) o Noche (negro puro): se aplica a toda la aplicación</string>
     <string name="theme_day">Día</string>
@@ -224,30 +181,17 @@
     <string name="theme_default_sub">Azul</string>
     <string name="theme_night">Noche</string>
     <string name="theme_night_sub">Negro</string>
-    <string name="settings_dark_theme">Tema oscuro</string>
-    <string name="settings_dark_theme_sub">Aplicar tema visual oscuro a la interfaz</string>
-    <string name="settings_dynamic_color">Color dinámico</string>
-    <string name="settings_dynamic_color_sub">Usar esquema de colores del fondo de pantalla (Android 12+)</string>
-    <string name="settings_dynamic_color_sub_fallback">Esquema de colores del fondo de pantalla (Requiere Android 12+)</string>
     <string name="settings_m3_expressive">Material 3 Expresivo</string>
     <string name="settings_m3_expressive_sub">Colores vibrantes, formas muy redondeadas y estilo dinámico</string>
     <string name="settings_accent_color">Color de acento</string>
-    <string name="theme_accent_color">Color de acento del tema</string>
     <string name="theme_custom_title">Color personalizado del tema</string>
     <string name="theme_custom_desc">Introduce un código de color HEX (p. ej. #FF5722 o #00E676) para generar un esquema de color M3.</string>
     <string name="theme_hex_code_label">Código de color HEX</string>
     <string name="theme_hex_code_chip">Código HEX</string>
     <string name="theme_apply">Aplicar tema</string>
-    <string name="settings_pure_black">Negro puro para AMOLED</string>
-    <string name="settings_pure_black_sub">Superficies en negro profundo para ahorro de batería OLED y alto contraste</string>
-    <string name="settings_pure_black_sub_disabled_dark">Negro puro #000000 para ahorro máximo en pantallas OLED (activa el tema oscuro)</string>
-    <string name="settings_tab_layout">Diseño de pestañas personalizado (Izquierda, Centro, Derecha)</string>
-    <string name="settings_tab_layout_sub">Asigna pantallas individuales a cada pestaña. La selección intercambia duplicados automáticamente.</string>
-    <string name="settings_startup_options">Opciones de inicio</string>
     <string name="settings_default_startup_tab">Pestaña de inicio predeterminada</string>
 
     <!-- Settings - Sound, Vibration & Gestures -->
-    <string name="settings_sound_haptics">Sonido y vibración</string>
     <string name="settings_dialpad_tones">Tonos de teclado</string>
     <string name="settings_dialpad_tones_sub">Reproducir sonidos al marcar teclas</string>
     <string name="settings_vibrate">Vibración al pulsar</string>
@@ -259,15 +203,13 @@
     <string name="settings_flash_alerts">Alertas de flash al llamar</string>
     <string name="settings_flash_alerts_sub">Parpadea el flash de la cámara en llamadas entrantes</string>
     <string name="settings_auto_tune_volume">Ajuste automático de volumen para grabación</string>
-    <string name="settings_auto_tune_volume_sub">Equilibra automáticamente el volumen del altavoz al 55% durante la grabación para una captura acústica nítida.</string>
+    <string name="settings_auto_tune_volume_sub" formatted="false">Equilibra automáticamente el volumen del altavoz al 55% durante la grabación para una captura acústica nítida.</string>
     <string name="header_theme_styling">TEMA Y ESTILO</string>
     <string name="header_sound_haptics">SONIDO Y HÁPTICA</string>
 
     <!-- Settings - Calling Accounts, SIM & Telephony -->
-    <string name="settings_calling_features">Funciones de llamada</string>
     <string name="settings_call_waiting">Llamada en espera</string>
     <string name="settings_call_waiting_sub">Notificar llamadas entrantes durante una llamada activa</string>
-    <string name="settings_sim_voicemail">SIM y buzón de voz</string>
     <string name="settings_preferred_sim">SIM preferida</string>
     <string name="settings_preferred_sim_sub">Seleccionar tarjeta SIM para llamadas salientes</string>
     <string name="sim_1">SIM 1</string>
@@ -306,8 +248,6 @@
     <string name="edit_key">Editar tecla %1$d</string>
     <string name="delete_key">Eliminar tecla %1$d</string>
     <string name="settings_quick_responses">Respuestas rápidas</string>
-    <string name="settings_quick_responses_sub">Editar plantillas de rechazo SMS</string>
-    <string name="settings_quick_resp_title">Respuestas rápidas</string>
     <string name="quick_responses">Respuestas rápidas</string>
     <string name="quick_decline_messages">MENSAJES DE RECHAZO RÁPIDO</string>
     <string name="create_custom_reply">Crear respuesta personalizada</string>
@@ -325,10 +265,8 @@
     <string name="save_voicemail_number">Guardar número de correo de voz</string>
 
     <!-- Settings - Call Blocking, Spam Database & Offline Protection -->
-    <string name="settings_calls_blocking">Llamadas y bloqueo</string>
     <string name="settings_blocked_numbers">Números bloqueados</string>
     <string name="settings_blocked_numbers_sub">Gestionar llamadas entrantes restringidas</string>
-    <string name="settings_block_list_title">Lista de bloqueados</string>
     <string name="enter_number_to_block">Ingrese el número a bloquear</string>
     <string name="block_this_number">Bloquear este número</string>
     <string name="blocked_callers_header">LLAMANTES BLOQUEADOS</string>
@@ -340,9 +278,7 @@
     <string name="unblock_number">Desbloquear número</string>
     <string name="call_blocked_toast">🚫 Llamada bloqueada</string>
     <string name="settings_spam_protection">Protección contra Spam sin conexión</string>
-    <string name="settings_spam_protection_sub">Importe listas CSV de bloqueo y gestione números bloqueados localmente</string>
     <string name="local_offline_protection">Protección local sin conexión</string>
-    <string name="local_offline_protection_sub">Sin llamadas de red. Completamente fuera de línea.</string>
     <string name="spam_entries_label">Entradas de spam</string>
     <string name="spam_numbers_blocked">%1$d números bloqueados</string>
     <string name="add_spam_manually_title">Añadir número de spam manualmente</string>
@@ -353,17 +289,6 @@
     <string name="blocklist_empty_desc">Importe una lista de bloqueo CSV o añada números manualmente para bloquear llamadas no deseadas localmente.</string>
     <string name="blocked_offline_numbers_title">Números bloqueados sin conexión</string>
     <string name="btn_clear_all">Borrar todo</string>
-    <string name="import_csv_dialog_title">Importar lista de bloqueo CSV</string>
-    <string name="import_csv_dialog_desc">Formato: \'número,etiqueta\' (uno por línea). Pegue el contenido de su lista CSV a continuación:</string>
-    <string name="load_sample_dataset">O cargue una lista de ejemplo local:</string>
-    <string name="btn_load_sample_list">Cargar lista de ejemplo</string>
-    <string name="spam_csv_placeholder">18005550199,Telemarketing no deseado\n18885550122,Llamada sospechosa</string>
-    <string name="btn_csv_import">Importar CSV</string>
-    <string name="spam_db_check_updates">Buscar actualizaciones de base de datos</string>
-    <string name="spam_db_checking">Comprobando definiciones de amenazas locales...</string>
-    <string name="spam_db_up_to_date">Base de datos de spam sin conexión actualizada</string>
-    <string name="blocklist_file_action_title">Copia de seguridad y migración</string>
-    <string name="blocklist_file_action_desc">Exporte sus llamadas bloqueadas a un archivo .txt/.csv o importe números desde listas externas.</string>
     <string name="btn_export_blocklist">Exportar lista de bloqueados</string>
     <string name="btn_import_blocklist">Importar archivo</string>
     <string name="btn_export_spam_csv">Exportar CSV</string>
@@ -372,15 +297,8 @@
     <string name="spam_import_count_success">¡Se importaron %1$d entradas de spam!</string>
 
     <!-- Settings - Call Recording Vault, Audio & Compression -->
-    <string name="settings_call_recording">Grabación de llamadas</string>
     <string name="settings_call_recording_sub">Habilitar controles de grabación en llamada y guardar localmente</string>
-    <string name="settings_recordings">Grabaciones guardadas</string>
-    <string name="settings_recordings_sub">Acceder al audio de llamadas guardado localmente</string>
     <string name="settings_recordings_title">Grabaciones guardadas</string>
-    <string name="settings_view_saved_recordings">Ver grabaciones guardadas</string>
-    <string name="settings_view_saved_recordings_sub">Escuchar y gestionar sus grabaciones de llamadas</string>
-    <string name="secure_local_recordings">GRABACIONES LOCALES SEGURAS</string>
-    <string name="recordings_privacy_notice">Las grabaciones se almacenan de forma segura en la base de datos privada de la aplicación y no se comparten con servidores externos.</string>
     <string name="no_recordings_title">No se encontraron grabaciones</string>
     <string name="no_recordings_desc">Habilite la grabación de llamadas y toque el botón de grabar durante una llamada activa.</string>
     <string name="share_recording">Compartir</string>
@@ -415,76 +333,30 @@
     <string name="settings_dynamic_island_speaker_only_sub">Muestra Dynamic Island exclusivamente cuando el modo altavoz esté activo</string>
     <string name="settings_dynamic_island_floating_permission">Permiso de superposición flotante</string>
     <string name="settings_dynamic_island_floating_permission_sub">Permite mostrar la cápsula sobre otras aplicaciones (compatible con OnePlus, Xiaomi, Vivo, Samsung)</string>
-    <string name="dynamic_island_speaker_on">ALTAVOZ</string>
     <string name="dynamic_island_muted">Silenciado</string>
-    <string name="dynamic_island_recording">GRAB</string>
-    <string name="dynamic_island_tap_to_expand">Toca para controles de llamada</string>
 
     <!-- Settings - Contacts, Deduplication & Storage -->
-    <string name="settings_contact_preferences">Preferencias de contactos</string>
     <string name="settings_contacts_to_display">Contactos a mostrar</string>
-    <string name="settings_contacts_to_display_sub">Filtrar contactos por origen de cuenta (Google, Teléfono, SIM)</string>
     <string name="settings_default_account_for_new">Cuenta predeterminada para nuevos contactos</string>
-    <string name="settings_default_account_for_new_sub">Cuenta preseleccionada al crear nuevos contactos</string>
-    <string name="settings_dedup">Utilidad de desduplicación</string>
-    <string name="settings_dedup_sub">Combinar contactos duplicados automáticamente</string>
-    <string name="settings_dedup_title">Utilidad de desduplicación</string>
-    <string name="dedup_desc">El sistema escanea su base de datos local en busca de entradas duplicadas con el mismo número para combinarlas de inmediato.</string>
-    <string name="no_duplicates_title">No se encontraron duplicados</string>
-    <string name="no_duplicates_desc">¡Su lista de contactos está limpia! No se detectaron números duplicados.</string>
-    <string name="merge_all_duplicates">Combinar todos los duplicados detectados (%1$d grupos)</string>
-    <string name="merge_group">Combinar grupo</string>
     <string name="btn_add_merge">Añadir y combinar</string>
-    <string name="toast_merged_all_duplicates">Todos los duplicados se combinaron con éxito</string>
-    <string name="toast_merged_duplicates_for">Duplicados combinados para %1$s</string>
-    <string name="settings_merge_duplicate_contacts">Combinar contactos duplicados</string>
-    <string name="settings_merge_duplicate_contacts_sub">Escanear y limpiar entradas de contactos duplicadas</string>
 
     <!-- Settings - Backup, Restore & Encrypted Migration -->
-    <string name="settings_data_utilities">Datos y utilidades</string>
     <string name="settings_backup_restore_sub">Restaurar registro de llamadas y ajustes desde archivo JSON cifrado</string>
-    <string name="backup_service_health_title">Copia de seguridad y estado del servicio</string>
-    <string name="backup_service_health_sub">Copia de seguridad local cifrada en JSON, restauración y estado de vigilancia</string>
-    <string name="service_health_header">Estado del servicio de bloqueo de llamadas</string>
-    <string name="service_health_active">Activo y protegido</string>
-    <string name="service_health_action_req">Acción requerida / Permiso faltante</string>
-    <string name="service_health_role_granted">Rol de filtro: Concedido</string>
-    <string name="service_health_role_not_granted">Rol de filtro: No concedido</string>
     <string name="backup_export_title">Copia de seguridad local cifrada</string>
     <string name="backup_export_desc">Exporte listas de bloqueo, notas de llamadas, marcación rápida y respuestas rápidas a una cadena JSON cifrada con AES-256.</string>
     <string name="backup_export_password_label">Contraseña de cifrado (Opcional)</string>
-    <string name="backup_export_btn">Exportar copia cifrada</string>
-    <string name="backup_restore_title">Restaurar desde copia de seguridad</string>
     <string name="backup_restore_desc">Restaure listas de bloqueo, notas y preferencias desde una cadena de copia exportada previamente.</string>
-    <string name="backup_import_btn">Importar cadena de copia</string>
-    <string name="backup_exported_dialog_title">Copia de seguridad exportada con éxito</string>
-    <string name="backup_exported_dialog_desc">A continuación se muestra su cadena de copia de seguridad. Cópiela y guárdela de forma segura:</string>
-    <string name="backup_copy_clipboard">Copiar al portapapeles</string>
-    <string name="backup_import_dialog_title">Importar copia de seguridad</string>
-    <string name="backup_import_dialog_desc">Pegue su cadena de copia de seguridad JSON o cifrada a continuación:</string>
-    <string name="backup_string_label">Cadena de copia de seguridad</string>
     <string name="backup_password_label">Contraseña (si está cifrada)</string>
     <string name="backup_restore_btn">Restaurar</string>
     <string name="backup_restored_success_toast">¡Copia de seguridad restaurada con éxito!</string>
     <string name="backup_restore_failed_toast">Error al restaurar. Verifique la contraseña o la cadena de datos.</string>
-    <string name="backup_copied_toast">¡Cadena de copia copiada al portapapeles!</string>
     <string name="vcf_migration_title">Migración de contactos vCard (VCF)</string>
     <string name="vcf_migration_desc">Exporte sus contactos locales como archivo vCard (.vcf) o impórtelos.</string>
-    <string name="btn_export_vcf">Exportar VCF</string>
-    <string name="btn_import_vcf">Importar VCF</string>
-    <string name="vcf_exported_title">Contactos vCard (VCF) exportados</string>
-    <string name="vcf_exported_desc">Sus contactos han sido exportados en formato vCard estándar. Copie este texto para guardarlo.</string>
-    <string name="vcf_import_title">Importar contactos desde vCard</string>
-    <string name="vcf_import_desc">Pegue el contenido de un archivo .vcf (vCard) a continuación para importar contactos.</string>
-    <string name="vcf_content_label">Contenido vCard (VCF)</string>
-    <string name="btn_import_contacts">Importar contactos</string>
     <string name="header_contacts_import_export">IMPORTACIÓN Y EXPORTACIÓN DE CONTACTOS</string>
     <string name="settings_export_contacts_vcard">Exportar contactos (vCard)</string>
     <string name="settings_import_contacts_vcard">Importar contactos (vCard)</string>
     <string name="settings_import_contacts_vcard_sub">Restaurar contactos desde un archivo .vcf estándar</string>
     <string name="vcf_import_count_success">¡Contactos importados con éxito!</string>
-    <string name="btn_save_file">Guardar en archivo</string>
-    <string name="btn_open_file">Elegir archivo</string>
     <string name="btn_save_backup_file">Guardar copia de seguridad</string>
     <string name="btn_restore_backup_file">Restaurar desde archivo</string>
     <string name="btn_save_vcf_file">Guardar archivo .VCF</string>
@@ -494,18 +366,12 @@
     <string name="file_read_failed">Error al leer el archivo seleccionado</string>
 
     <!-- Settings - Security, Biometrics, PIN & App Lock -->
-    <string name="settings_security_protection">Seguridad y Protección</string>
     <string name="settings_biometric_lock">Bloqueo de aplicación</string>
     <string name="settings_biometric_lock_sub">Requerir bloqueo de dispositivo (PIN/Patrón/Biometría) para abrir la aplicación</string>
     <string name="settings_pocket_protection">Protección táctil de bolsillo</string>
     <string name="settings_pocket_protection_sub">Bloquea toques táctiles durante llamadas en el bolsillo usando sensor de proximidad</string>
     <string name="pocket_lock_active">Bloqueo de bolsillo activo</string>
     <string name="pocket_lock_desc">Mantén despejado el sensor de proximidad para desbloquear</string>
-    <string name="app_locked_title">Marcador seguro bloqueado</string>
-    <string name="app_locked_desc">Esta aplicación está protegida para guardar su privacidad. Autentíquese con el bloqueo de su dispositivo para continuar.</string>
-    <string name="btn_unlock_dialer">Desbloquear marcador</string>
-    <string name="device_auth_title">Marcador Seguro</string>
-    <string name="device_auth_subtitle">Autentíquese para abrir el Marcador Seguro</string>
     <string name="restricted_settings_title">Ajustes restringidos</string>
     <string name="restricted_settings_desc">Para usar esta aplicación como marcador predeterminado, es posible que deba habilitarla manualmente en Ajustes del sistema.</string>
     <string name="btn_open_settings">Abrir ajustes</string>
@@ -517,19 +383,15 @@
     <string name="no_matching_calls_for">No hay llamadas coincidentes para \"%1$s\"</string>
     <string name="summary_missed_and_time">Perdidas: %1$d • Tiempo: %2$s</string>
     <string name="summary_range_today">Hoy</string>
-    <string name="summary_range_this_week">Esta semana</string>
-    <string name="summary_range_this_month">Este mes</string>
-    <string name="summary_range_this_year">Este año</string>
-    <string name="summary_range_total">Total</string>
     <string name="total_talk_time">Tiempo total de conversación</string>
+    <string name="summary_chart_distribution">Distribución de llamadas</string>
+    <string name="summary_chart_activity">Últimos 7 días</string>
+    <string name="summary_avg_duration">Duración media</string>
+    <string name="summary_busiest_day">Día más ajetreado</string>
     <string name="summary_range_week_tab">Semana</string>
     <string name="summary_range_month_tab">Mes</string>
     <string name="summary_range_year_tab">Año</string>
     <string name="summary_range_all_tab">Todas</string>
-    <string name="settings_dashboard_style">Estilo del panel de llamadas</string>
-    <string name="settings_dashboard_style_sub">Elige entre panel de estadísticas completo o solo barra de filtros compacta</string>
-    <string name="settings_call_log_dashboard">Panel de resumen del registro de llamadas</string>
-    <string name="settings_call_log_dashboard_sub">Mostrar estadísticas generales y tiempo de conversación</string>
     <string name="settings_call_log_filters">Filtros rápidos del registro de llamadas</string>
     <string name="settings_call_log_filters_sub">Mostrar filtros rápidos sobre los registros de llamadas</string>
     <string name="settings_all_call_notes">Notas de llamadas</string>
@@ -537,10 +399,7 @@
     <string name="no_notes_title">Sin notas de llamadas</string>
     <string name="no_notes_desc">Las notas añadidas durante las llamadas aparecerán aquí</string>
     <string name="search_notes_placeholder">Buscar notas o números...</string>
-    <string name="edit_note_title">Editar nota de llamada</string>
-    <string name="delete_note_confirm">¿Eliminar la nota de llamada para %1$s?</string>
     <string name="note_deleted_toast">Nota de llamada eliminada</string>
-    <string name="call_note_card_title">Nota de llamada</string>
     <string name="add_call_note_btn">Añadir nota de llamada</string>
     <string name="call_notes_count_title">Notas de llamadas (%1$d)</string>
     <string name="call_notes_count_badge">%1$d notas</string>
@@ -549,13 +408,10 @@
     <string name="note_saved">Nota guardada de forma segura</string>
     <string name="note_placeholder">Ingresar detalles importantes...</string>
     <string name="btn_save_note">Guardar nota</string>
-    <string name="header_productivity_notes">PRODUCTIVIDAD Y NOTAS</string>
 
     <!-- Settings - Fake Call Simulator & Reminders -->
     <string name="settings_fake_call_sim">Simulador de llamada falsa</string>
     <string name="settings_fake_call_sim_sub">Programe una llamada simulada entrante para salir de situaciones incómodas</string>
-    <string name="fake_call_sim_title">Simulador de llamada falsa</string>
-    <string name="fake_call_sim_explanation">Se activará una pantalla de llamada entrante simulada de alta fidelidad tras el temporizador seleccionado. Responder la llamada funciona como una llamada real.</string>
     <string name="caller_identity">Identidad del llamante</string>
     <string name="caller_name_label">Nombre del llamante</string>
     <string name="trigger_delay_timer">Temporizador de inicio</string>
@@ -567,10 +423,6 @@
     <string name="schedule_sequential_calls">Programar %1$d llamadas secuenciales</string>
     <string name="schedule_escape_call">Programar llamada falsa (%1$d seg)</string>
     <string name="btn_cancel_scheduled_escape_calls">Cancelar llamadas simuladas programadas</string>
-    <string name="unit_sec">seg</string>
-    <string name="unit_min">min</string>
-    <string name="unit_hour">hora</string>
-    <string name="unit_day">día</string>
     <string name="callback_reminders_title">Recordatorios de llamada</string>
     <string name="callback_reminders_stats">%1$d activos, %2$d procesados</string>
     <string name="active_reminders_title">Recordatorios activos</string>
@@ -592,14 +444,10 @@
     <string name="btn_configure">Configurar</string>
     <string name="btn_set_default">Establecer predeterminado</string>
     <string name="status_granted">Concedido</string>
-    <string name="status_enabled">Activado</string>
     <string name="settings_lockscreen_calling_title">Llamadas a pantalla completa en pantalla de bloqueo</string>
     <string name="settings_lockscreen_calling_sub">Muestra la interfaz de llamada entrante en pantalla completa cuando el dispositivo esté bloqueado o con pantalla apagada</string>
     <string name="settings_full_screen_intent_warning">Las alertas de llamada a pantalla completa están restringidas por el sistema</string>
     <string name="settings_overlay_permission_warning">Permiso de superposición necesario para mostrar Dynamic Island sobre otras apps</string>
-    <string name="settings_all_call_permissions_good">Todas las funciones de llamada y pantalla de bloqueo están completamente configuradas</string>
-    <string name="state_enabled">Activado</string>
-    <string name="state_disabled">Desactivado</string>
     <string name="feature_enable_prompt">Active el interruptor superior para activar</string>
     <string name="feature_disabled_hint">La función está desactivada</string>
     <string name="btn_enable_feature">Activar función</string>
@@ -610,33 +458,16 @@
     <string name="settings_about_sub">Información de versión, licencias y tecnología central</string>
     <string name="settings_privacy">Política de privacidad</string>
     <string name="settings_privacy_sub">Aviso de cero recopilación de datos</string>
-    <string name="settings_about_privacy">Acerca de y privacidad</string>
-    <string name="about_mission_title">Nuestra misión</string>
     <string name="about_mission_desc">Proporcionar una experiencia de marcación simple, confiable y segura sin comprometer la privacidad del usuario.</string>
     <string name="about_app_desc">NovaDial es una herramienta de comunicación centrada en la privacidad diseñada para darle el control de sus datos. Todas las funciones ocurren exclusivamente en su dispositivo.</string>
     <string name="privacy_policy_title">Política de privacidad</string>
     <string name="privacy_intro">En NovaDial, priorizamos su privacidad.</string>
-    <string name="privacy_section_1_title">1. Procesamiento local de datos</string>
     <string name="privacy_section_1_desc">Sus contactos, registros de llamadas e historial personal nunca se transmiten a nuestros servidores.</string>
-    <string name="privacy_section_2_title">2. Uso de datos</string>
     <string name="privacy_section_2_desc">La información se utiliza solo para las funciones principales: asignación de contactos, historial de llamadas y micrófono.</string>
-    <string name="privacy_section_3_title">3. Compartición de datos</string>
     <string name="privacy_section_3_desc">No compartimos sus datos con terceros.</string>
-    <string name="settings_check_updates">Buscar actualizaciones</string>
-    <string name="settings_check_updates_sub">Asegurarse de que la aplicación esté actualizada y sea segura</string>
-    <string name="check_updates_desc">Verifique y actualice NovaDial directamente desde F-Droid oficial o espejos estables.</string>
-    <string name="checking_mirrors">Comprobando espejos seguros...</string>
-    <string name="app_up_to_date_desc">Está utilizando la última versión oficial criptográfica de NovaDial.</string>
-    <string name="check_for_updates_now">Buscar actualizaciones ahora</string>
-    <string name="up_to_date_result">¡NovaDial está actualizado!\nVersión v1.5.0 (Versión estable)</string>
-    <string name="settings_app_updates">Actualizaciones en la aplicación</string>
-    <string name="settings_app_updates_sub">Comprobar estado de versión y registro de cambios</string>
-    <string name="settings_updates_title">Actualizaciones de la app</string>
-    <string name="settings_contribution">Contribución</string>
     <string name="settings_support_title">Apoyar a NovaDial</string>
     <string name="settings_support_desc" formatted="false">NovaDial es 100% gratuito, de código abierto, sin anuncios y enfocado en la privacidad. Si le resulta útil, considere contribuir con código o traducciones.</string>
     <string name="settings_contribute_github">Contribuir en GitHub</string>
-    <string name="app_version_name">Versión 1.5.0</string>
 
     <!-- General Buttons, Common Utilities & Common Dialogs -->
     <string name="btn_cancel">Cancelar</string>
@@ -644,7 +475,6 @@
     <string name="btn_delete">Eliminar</string>
     <string name="btn_edit">Editar</string>
     <string name="btn_discard">Descartar</string>
-    <string name="btn_import">Importar</string>
     <string name="delete">Eliminar</string>
     <!-- Duplicate Finder -->
     <string name="dup_finder_title">Buscador de duplicados</string>
@@ -667,15 +497,14 @@
     <string name="dup_delete_one_confirm_desc">Este contacto se eliminará permanentemente. Esto no se puede deshacer.</string>
     <string name="dup_merged">%1$d contactos combinados</string>
     <string name="dup_deleted">%1$d contacto(s) eliminado(s)</string>
-    <string name="edit">Editar</string>
+    <string name="dup_merge_all">Combinar todo</string>
+    <string name="dup_delete_all">Eliminar todo</string>
+    <string name="dup_merge_all_confirm_desc">Cada grupo de duplicados se combina, conservando el contacto seleccionado en cada uno. Se guarda de forma permanente.</string>
+    <string name="dup_delete_all_confirm_desc">Todos los duplicados no seleccionados de cada grupo se eliminarán permanentemente. Esto no se puede deshacer.</string>
     <string name="close">Cerrar</string>
-    <string name="add">Añadir</string>
-    <string name="add_new_contact">Añadir nuevo</string>
     <string name="add_call">Añadir llamada</string>
     <string name="add_call_search_hint">Buscar contacto o ingresar número</string>
-    <string name="filter_all_contacts">Todos los contactos</string>
     <string name="account_filter_all">Todas las cuentas</string>
-    <string name="not_set">No configurado</string>
     <string name="on_hold_prefix">En espera:</string>
     <string name="warning">Advertencia</string>
     <string name="error_open_messages">No se pudieron abrir los mensajes</string>
@@ -740,6 +569,11 @@
     <string name="announcer_headphones_sub">Permanece en silencio cuando no hay auriculares o dispositivo Bluetooth conectado.</string>
     <string name="announcer_test_title">Probar anuncio</string>
     <string name="announcer_test_sub">Reproduce una muestra con tu configuración actual</string>
+    <string name="announcer_voice_title">Voz</string>
+    <string name="announcer_voice_default">Predeterminada</string>
+    <string name="announcer_voice_male">Masculina</string>
+    <string name="announcer_voice_female">Femenina</string>
+    <string name="announcer_voice_note">Usa la voz de texto a voz de tu dispositivo. El resultado depende del motor de voz instalado.</string>
 <string name="dialpad_matches_title">Quick matches</string>
     <string name="dialpad_matches_hint">Tap a match to call</string>
 
@@ -792,10 +626,48 @@
     <string name="quick_reply_direct_sms_title">Send as SMS</string>
     <string name="quick_reply_direct_sms_sub">Send decline messages directly as text messages using SEND_SMS permission</string>
     <string name="sms_permission_required">SMS permission needed to send quick replies as text</string>
-    <string name="sms_sent_toast">Message sent</string>
 
     <string name="widget_favorites_title">NovaDial Favourites</string>
     <string name="widget_tap_hint">Tap a favourite to call</string>
     <string name="widget_no_favourites">No favourites yet - open NovaDial to add some</string>
     <string name="ringtone_pick">Ringtone</string>
+    <!-- Emergency SOS -->
+    <string name="sos_title">SOS de emergencia</string>
+    <string name="sos_sub">Envía una alerta de emergencia con tu ubicación y llama a los servicios de emergencia</string>
+    <string name="sos_instructions_title">Cómo funciona</string>
+    <string name="sos_instructions_body">1. Añade uno o más contactos de emergencia abajo.\n2. Mantén pulsado el botón SOS.\n3. NovaDial envía tu ubicación a esos contactos y llama a tu número de emergencia.</string>
+    <string name="sos_button_label">SOS</string>
+    <string name="sos_hold_hint">Mantén pulsado para activar</string>
+    <string name="sos_contacts_title">Contactos de emergencia</string>
+    <string name="sos_contact_add">Añadir contacto de emergencia</string>
+    <string name="sos_contacts_empty">Aún no hay contactos de emergencia</string>
+    <string name="sos_contact_name">Nombre</string>
+    <string name="sos_contact_number">Número de teléfono</string>
+    <string name="sos_auto_alert_title">Alertar a los contactos automáticamente</string>
+    <string name="sos_auto_alert_sub">Envía un mensaje a tus contactos de emergencia guardados cuando se active el SOS</string>
+    <string name="sos_include_location_title">Incluir mi ubicación</string>
+    <string name="sos_include_location_sub">Adjunta un enlace de mapa con tu posición GPS a la alerta</string>
+    <string name="sos_call_number_title">Número de emergencia a llamar</string>
+    <string name="sos_call_number_sub">El número que se marca al activar el SOS (por ejemplo 112)</string>
+    <string name="sos_grant_permissions">Conceder permisos necesarios</string>
+    <string name="sos_permissions_needed">Se necesitan permisos de SMS y ubicación para la alerta completa</string>
+    <string name="sos_permissions_ok">Permisos concedidos</string>
+    <string name="sos_sent_toast">Alerta SOS enviada a %1$d contacto(s)</string>
+    <string name="sos_no_contacts_toast">Añade al menos un contacto de emergencia primero</string>
+    <string name="sos_test_alert">Enviar alerta de prueba</string>
+    <string name="sos_alert_message">EMERGENCIA - Necesito ayuda. Esta es una alerta SOS automática de NovaDial.</string>
+    <string name="sos_alert_location_label">Mi ubicación:</string>
+    <string name="sos_no_location">Ubicación no disponible - activa el GPS para un enlace de mapa</string>
+    <string name="sos_custom_message_title">Custom alert message</string>
+    <string name="sos_custom_message_hint">Leave blank to use the default message</string>
+    <string name="sos_countdown_title">Emergency SOS</string>
+    <string name="sos_countdown_body">Sending your alert and calling in %1$d seconds.\nTap Cancel to stop.</string>
+    <string name="sos_countdown_now">Send now</string>
+    <string name="sos_countdown_setting">Countdown before sending</string>
+    <string name="sos_countdown_setting_sub">Seconds to cancel an accidental SOS (0 sends immediately)</string>
+    <string name="sos_shake_title">Shake to trigger SOS</string>
+    <string name="sos_shake_sub">Shake the phone firmly to start the SOS countdown. Runs in the background.</string>
+    <string name="sos_shake_service_title">Shake to SOS is on</string>
+    <string name="sos_shake_service_text">Shake your phone firmly to start the emergency countdown</string>
+    <string name="sos_power_note">Note: Android does not let third-party apps detect a triple-press of the power button. Use the shake gesture or the button above instead.</string>
 </resources>
