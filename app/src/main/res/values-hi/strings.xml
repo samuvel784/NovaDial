@@ -184,6 +184,14 @@
     <string name="settings_m3_expressive">मटीरियल 3 एक्सप्रेसिव</string>
     <string name="settings_m3_expressive_sub">जीवंत रंग, अतिरिक्त गोल आकार और डायनामिक स्टाइलिंग</string>
     <string name="settings_accent_color">एक्सेंट रंग</string>
+    <string name="accent_color_system">System</string>
+    <string name="accent_color_custom">Custom</string>
+    <string name="accent_palette_aurora">Aurora</string>
+    <string name="accent_palette_nebula">Nebula</string>
+    <string name="accent_palette_glacier">Glacier</string>
+    <string name="accent_palette_ember">Ember</string>
+    <string name="accent_palette_forest">Forest</string>
+    <string name="accent_palette_mono">Mono</string>
     <string name="theme_custom_title">कस्टम थीम रंग</string>
     <string name="theme_custom_desc">M3 रंग योजना उत्पन्न करने के लिए कोई भी HEX कोड दर्ज करें (उदा. #FF5722 या #00E676)।</string>
     <string name="theme_hex_code_label">HEX कलर कोड</string>

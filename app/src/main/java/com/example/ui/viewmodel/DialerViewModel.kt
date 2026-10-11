@@ -263,7 +263,15 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     var customColorHex = mutableStateOf(prefs.getString("custom_color_hex", "#5A4BE0") ?: "#5A4BE0")
     var isM3Expressive = mutableStateOf(prefs.getBoolean("is_m3_expressive", true))
     var avatarShapeType = mutableStateOf(prefs.getString("avatar_shape_type", "squircle") ?: "squircle")
-    var themeColor = mutableStateOf(prefs.getString("theme_color", "nova_aurora") ?: "nova_aurora")
+    var themeColor = mutableStateOf(
+        run {
+            val stored = prefs.getString("theme_color", "system") ?: "system"
+            val migrated = prefs.getBoolean("accent_theme_migrated", false)
+            val resolved = if (!migrated && stored == "nova_aurora") "system" else stored
+            if (!migrated) prefs.edit { putBoolean("accent_theme_migrated", true) }
+            resolved
+        }
+    )
     var useDynamicColor = mutableStateOf(prefs.getBoolean("use_dynamic_color", Build.VERSION.SDK_INT >= Build.VERSION_CODES.S))
     var callWaitingEnabled = mutableStateOf(prefs.getBoolean("call_waiting_enabled", true))
     var recordingEnabled = mutableStateOf(prefs.getBoolean("recording_enabled", false))
@@ -493,6 +501,16 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         // keep isDarkTheme state coherent for any legacy readers
         isDarkTheme.value = dark
         isAmoledMode.value = mode == ThemeMode.NIGHT
+    }
+
+    fun updateThemeColor(color: String) {
+        themeColor.value = color
+        prefs.edit { putString("theme_color", color) }
+    }
+
+    fun updateCustomColorHex(hex: String) {
+        customColorHex.value = hex
+        prefs.edit { putString("custom_color_hex", hex) }
     }
 
     fun updateDarkTheme(dark: Boolean) {

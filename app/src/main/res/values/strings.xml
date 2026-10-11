@@ -184,6 +184,14 @@
     <string name="settings_m3_expressive">Material 3 Expressive</string>
     <string name="settings_m3_expressive_sub">Vibrant colors, extra rounded squircle shapes, and dynamic styling</string>
     <string name="settings_accent_color">Accent Color</string>
+    <string name="accent_color_system">System</string>
+    <string name="accent_color_custom">Custom</string>
+    <string name="accent_palette_aurora">Aurora</string>
+    <string name="accent_palette_nebula">Nebula</string>
+    <string name="accent_palette_glacier">Glacier</string>
+    <string name="accent_palette_ember">Ember</string>
+    <string name="accent_palette_forest">Forest</string>
+    <string name="accent_palette_mono">Mono</string>
     <string name="theme_custom_title">Custom Theme Seed Color</string>
     <string name="theme_custom_desc">Enter any HEX color code (e.g. #FF5722 or #00E676) to dynamically generate an M3 color scheme.</string>
     <string name="theme_hex_code_label">HEX Color Code</string>

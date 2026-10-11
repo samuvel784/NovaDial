@@ -139,7 +139,9 @@ fun BottomNavBar(
     val isAmoled = LocalAmoledMode.current
 
     NavigationBar(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
         containerColor = if (isAmoled) Color.Black else MaterialTheme.colorScheme.surface,
         tonalElevation = if (isAmoled) 0.dp else 3.dp
     ) {

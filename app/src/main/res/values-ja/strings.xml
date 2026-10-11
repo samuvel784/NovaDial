@@ -184,6 +184,14 @@
     <string name="settings_m3_expressive">Material 3 Expressive</string>
     <string name="settings_m3_expressive_sub">鮮やかな色、角丸デザイン、ダイナミックなスタイル</string>
     <string name="settings_accent_color">アクセントカラー</string>
+    <string name="accent_color_system">System</string>
+    <string name="accent_color_custom">Custom</string>
+    <string name="accent_palette_aurora">Aurora</string>
+    <string name="accent_palette_nebula">Nebula</string>
+    <string name="accent_palette_glacier">Glacier</string>
+    <string name="accent_palette_ember">Ember</string>
+    <string name="accent_palette_forest">Forest</string>
+    <string name="accent_palette_mono">Mono</string>
     <string name="theme_custom_title">カスタムテーマカラー</string>
     <string name="theme_custom_desc">HEXカラーコード（例: #FF5722、#00E676）を入力してM3テーマを生成します。</string>
     <string name="theme_hex_code_label">HEXカラーコード</string>

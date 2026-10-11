@@ -184,6 +184,14 @@
     <string name="settings_m3_expressive">Material 3 التعبيري</string>
     <string name="settings_m3_expressive_sub">ألوان زاهية، أشكال دائرية للغاية، وتصميم ديناميكي</string>
     <string name="settings_accent_color">لون التمييز</string>
+    <string name="accent_color_system">System</string>
+    <string name="accent_color_custom">Custom</string>
+    <string name="accent_palette_aurora">Aurora</string>
+    <string name="accent_palette_nebula">Nebula</string>
+    <string name="accent_palette_glacier">Glacier</string>
+    <string name="accent_palette_ember">Ember</string>
+    <string name="accent_palette_forest">Forest</string>
+    <string name="accent_palette_mono">Mono</string>
     <string name="theme_custom_title">لون تمييز مخصص</string>
     <string name="theme_custom_desc">اختر أي لون مخصص بدقة عالية لواجهة الاتصال ولوحة الأرقام</string>
     <string name="theme_hex_code_label">رمز اللون الست عشري (HEX)</string>

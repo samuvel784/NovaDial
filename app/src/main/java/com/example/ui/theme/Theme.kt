@@ -492,7 +492,7 @@ fun MyApplicationTheme(
   themeMode: ThemeMode? = null,
   darkTheme: Boolean? = null,
   dynamicColor: Boolean = false,
-  themeColor: String = "nova_aurora",
+  themeColor: String = "system",
   customColorHex: String = "#5A4BE0",
   isAmoledMode: Boolean = false,
   isM3Expressive: Boolean = true,
@@ -514,6 +514,27 @@ fun MyApplicationTheme(
 
       else -> themeModeScheme(mode)
     }
+
+  // User-selected accent palette (Appearance ▸ Accent Color). "system" keeps the base /
+  // dynamic scheme; any palette overrides only the accent families so the Day / Default /
+  // Night background choice is preserved.
+  if (themeColor != "system") {
+      val accent = getColorSchemeForTheme(themeColor, dark, customColorHex)
+      colorScheme = colorScheme.copy(
+          primary = accent.primary,
+          onPrimary = accent.onPrimary,
+          primaryContainer = accent.primaryContainer,
+          onPrimaryContainer = accent.onPrimaryContainer,
+          secondary = accent.secondary,
+          onSecondary = accent.onSecondary,
+          secondaryContainer = accent.secondaryContainer,
+          onSecondaryContainer = accent.onSecondaryContainer,
+          tertiary = accent.tertiary,
+          onTertiary = accent.onTertiary,
+          tertiaryContainer = accent.tertiaryContainer,
+          onTertiaryContainer = accent.onTertiaryContainer
+      )
+  }
 
   if (isM3Expressive) {
       colorScheme = getExpressiveColorScheme(colorScheme, dark)

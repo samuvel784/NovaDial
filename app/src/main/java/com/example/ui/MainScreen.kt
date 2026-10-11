@@ -575,7 +575,7 @@ fun MainScreen(
                             },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(end = 18.dp, bottom = 96.dp),
+                                .padding(end = 18.dp, bottom = 116.dp),
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
                             shape = MaterialTheme.shapes.extraLarge
