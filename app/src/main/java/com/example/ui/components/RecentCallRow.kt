@@ -53,6 +53,10 @@ import com.example.model.CallRecord
 import com.example.model.CallRecording
 import com.example.model.CallType
 import com.example.model.Contact
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.MultiSimManager
@@ -82,52 +86,40 @@ fun RecentCallRow(
     // SQUIRCLE ARCHITECTURE: Strictly enforce AppShapes.Avatar (percent = 32)
     val avatarShape = AppShapes.Avatar
 
-    val searchBarColor = if (isAmoled) {
-        Color(0xFF0C0C0C)
-    } else if (isExpressive) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-    } else {
-        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-    }
-
-    val containerColor = if (isExpanded) {
-        if (isAmoled) Color(0xFF141414) else searchBarColor.copy(alpha = minOf(1f, searchBarColor.alpha + 0.15f))
-    } else {
-        searchBarColor
-    }
+    // Cards sit one tone above the page and get a soft hairline border, so lists look crisp in every theme.
+    val baseCard = MaterialTheme.colorScheme.surfaceContainerLow
+    val expandedCard = MaterialTheme.colorScheme.surfaceContainer
+    val containerColor by animateColorAsState(
+        targetValue = if (isExpanded) expandedCard else baseCard,
+        animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+        label = "recentCardColor"
+    )
+    val cardSource = remember { MutableInteractionSource() }
 
     val isRowSwipeEnabled by viewModel.isRowSwipeEnabled
-    val allRecordings by viewModel.recordingsFlow.collectAsStateWithLifecycle()
 
-    val matchingRecordings = remember(allRecordings, record.number) {
-        val digits = record.number.filter { it.isDigit() }
-        allRecordings.filter { rec ->
-            val recDigits = rec.number.filter { it.isDigit() }
-            (digits.isNotEmpty() && recDigits.isNotEmpty() && (digits.endsWith(recDigits) || recDigits.endsWith(digits))) ||
-            (rec.number == record.number) ||
-            (record.name.isNotEmpty() && record.name != "Unknown" && rec.name.equals(record.name, ignoreCase = true))
-        }
+    // Prepared once for the whole list (see RecentsLookup): a row only does cheap map lookups.
+    val lookup = LocalRecentsLookup.current
+    val matchingRecordings = remember(lookup, record.number, record.name) {
+        lookup.recordingsFor(record.number, record.name)
     }
     var showPlaybackDialog by remember { mutableStateOf(false) }
 
-    val spamEntities by viewModel.spamFlow.collectAsStateWithLifecycle()
-    val isSpam = remember(spamEntities, record.number) {
-        spamEntities.any { it.number == record.number }
-    }
-    val spamEntity = remember(spamEntities, record.number) {
-        spamEntities.firstOrNull { it.number == record.number }
-    }
+    val spamEntity = remember(lookup, record.number) { lookup.spamFor(record.number) }
+    val isSpam = spamEntity != null
 
     val rowCardContent = @Composable {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
+                .pressScale(cardSource, 0.985f)
+                .animateContentSize(animationSpec = NovaMotion.smooth())
+                .clickable(interactionSource = cardSource, indication = LocalIndication.current) {
                     RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
                     isExpanded = !isExpanded
                 },
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            border = if (isAmoled) BorderStroke(1.dp, Color(0xFF1C1C1C)) else null,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             shape = AppShapes.Card
         ) {
             Column {
@@ -176,7 +168,7 @@ fun RecentCallRow(
                                     modifier = Modifier.size(13.dp)
                                 )
 
-                                val physicalSimCount = remember(context) { MultiSimManager.getPhysicalSimCount(context) }
+                                val physicalSimCount = lookup.physicalSimCount
                                 if (physicalSimCount > 1) {
                                     val isSim1 = record.simSlot <= 1
                                     Surface(

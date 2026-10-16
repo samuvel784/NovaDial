@@ -29,6 +29,8 @@ import androidx.paging.*
 import com.example.*
 import com.example.model.*
 import com.example.util.CallAudioRecorder
+import com.example.util.DuplicateFinder
+import com.example.util.DuplicateGroup
 import com.example.util.RecordingCompressionProfile
 import com.example.util.ReminderScheduler
 import com.example.widget.FavoritesWidgetProvider
@@ -64,6 +66,38 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     // Details Screen state
     var isCallHistoryDetailsOpen = mutableStateOf(false)
+
+    // Duplicate detection
+    var duplicateGroups = mutableStateOf<List<com.example.util.DuplicateGroup>>(emptyList())
+    var showDuplicatePrompt = mutableStateOf(false)
+
+    init {
+        checkDuplicates(application)
+    }
+
+    /**
+     * Looks for duplicate contacts. At start-up it waits a few seconds, so the first screen can finish drawing before
+     * every contact is read, and it asks the user at most once a week (it used to prompt on every launch).
+     * Pass [force] = true for a button the user pressed on purpose.
+     */
+    fun checkDuplicates(context: Context, force: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!force) kotlinx.coroutines.delay(3_000)
+                val groups = com.example.util.DuplicateFinder.findDuplicates(context)
+                withContext(Dispatchers.Main) {
+                    duplicateGroups.value = groups
+                    val now = System.currentTimeMillis()
+                    val lastPrompt = prefs.getLong("last_duplicate_prompt", 0L)
+                    val askAgain = now - lastPrompt > 7L * 24 * 60 * 60 * 1000
+                    if (groups.isNotEmpty() && (force || askAgain)) {
+                        showDuplicatePrompt.value = true
+                        prefs.edit { putLong("last_duplicate_prompt", now) }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery.value = newQuery
@@ -297,7 +331,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     var flashAlertsEnabled = mutableStateOf(prefs.getBoolean("flash_alerts_enabled", false))
     var isCallbackRemindersEnabled = mutableStateOf(prefs.getBoolean("is_callback_reminders_enabled", true))
     var isCallNotesEnabled = mutableStateOf(prefs.getBoolean("is_call_notes_enabled", true))
-    var isFakeCallSimulatorEnabled = mutableStateOf(prefs.getBoolean("is_fake_call_simulator_enabled", true))
+    var isFakeCallSimulatorEnabled = mutableStateOf(prefs.getBoolean("is_fake_call_simulator_enabled", false))
     var pendingPostCallRecordingNote = mutableStateOf<CallRecording?>(null)
 
     // Dashboard & Tab Layout & Swipe Preferences
@@ -533,11 +567,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         prefs.edit { putBoolean("is_m3_expressive", expressive) }
     }
 
-    fun updateAvatarShapeType(shapeType: String) {
-        avatarShapeType.value = shapeType
-        prefs.edit { putString("avatar_shape_type", shapeType) }
-    }
-
     fun updateDefaultStartupTabKey(key: String) {
         defaultStartupTabKey.value = key
         prefs.edit { putString("default_startup_tab_key", key) }
@@ -769,21 +798,6 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     fun updateRowSwipeEnabled(enabled: Boolean) {
         isRowSwipeEnabled.value = enabled
         prefs.edit { putBoolean("is_row_swipe_enabled", enabled) }
-    }
-
-    fun saveLastOutgoingNumber(number: String) {
-        if (number.isNotBlank()) {
-            lastDialedNumber.value = number
-            prefs.edit { putString("last_dialed_number", number) }
-        }
-    }
-
-    fun getLastOutgoingNumber(): String {
-        if (lastDialedNumber.value.isNotBlank()) {
-            return lastDialedNumber.value
-        }
-        val lastOutgoing = allCallHistoryFlow.value.firstOrNull { it.type == CallType.OUTGOING }
-        return lastOutgoing?.number ?: ""
     }
 
     fun updateVoicemailNumber(num: String) {

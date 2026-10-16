@@ -73,3 +73,15 @@ NovaDial uses only Android platform APIs and the open-source libraries declared 
 `gradle/libs.versions.toml` (AndroidX, Room, SQLCipher, Coil, Robolectric/Roborazzi —
 all Apache-2.0 or MIT). There are no ads, no analytics, no proprietary SDKs, no API keys
 and **no `INTERNET` permission**.
+
+## Fonts
+
+The app bundles **Inter** (https://github.com/rsms/inter), Copyright (c) The Inter Project Authors, licensed under the
+SIL Open Font License 1.1. The four weights in `app/src/main/res/font/` are subsets (Latin, Greek and Cyrillic) of the
+original files. The licence text is in `app/src/main/assets/licenses/Inter-OFL.txt`.
+
+## Design system
+
+The premium design system (`AccentPalette.kt`, `NovaColors.kt`, `NovaMotion.kt`, `NovaComponents.kt`, `RecentsLookup.kt`,
+`Theme.kt`, `Type.kt` and the restyled components) was written for NovaDial. `Theme.kt` and `Type.kt` were rewritten
+from scratch; they still carry the original header because they replace files that came from Secure Dialer.

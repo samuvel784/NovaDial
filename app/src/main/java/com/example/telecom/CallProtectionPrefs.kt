@@ -85,7 +85,7 @@ object CallProtectionPrefs {
 
     // ---- Announcer ------------------------------------------------------------
 
-    fun isAnnouncerEnabled(context: Context) = prefs(context).getBoolean(KEY_ANN_ENABLED, true)
+    fun isAnnouncerEnabled(context: Context) = prefs(context).getBoolean(KEY_ANN_ENABLED, false)
     fun setAnnouncerEnabled(context: Context, v: Boolean) = prefs(context).edit { putBoolean(KEY_ANN_ENABLED, v) }
 
     fun getAnnouncerTemplate(context: Context): String =

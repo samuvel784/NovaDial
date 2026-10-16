@@ -46,9 +46,8 @@ fun InCallControlGrid(
     recordingEnabled: Boolean,
     isRecording: Boolean,
     onToggleRecording: () -> Unit,
-    callNotesEnabled: Boolean = true,
-    isNoteDialogOpen: Boolean,
-    onOpenNoteDialog: () -> Unit,
+    isQuickNotesOpen: Boolean = false,
+    onOpenQuickNotes: () -> Unit = {},
     avatarShapeType: String = "squircle"
 ) {
     val btnShape = AppShapes.Keypad
@@ -124,42 +123,36 @@ fun InCallControlGrid(
             )
         }
 
-        // Row 3: Recording & Note (Clean, balanced 3-slot row with no stretched buttons)
-        if (recordingEnabled || callNotesEnabled) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (recordingEnabled) {
-                    InCallButton(
-                        icon = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                        label = if (isRecording) stringResource(R.string.recording) else stringResource(R.string.record),
-                        isActive = isRecording,
-                        onClick = onToggleRecording,
-                        shape = btnShape,
-                        isPulsingRecording = isRecording,
-                        modifier = Modifier.weight(1f).height(buttonHeight)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
-                if (callNotesEnabled) {
-                    InCallButton(
-                        icon = Icons.Default.EditNote,
-                        label = stringResource(R.string.call_note),
-                        isActive = isNoteDialogOpen,
-                        onClick = onOpenNoteDialog,
-                        shape = btnShape,
-                        modifier = Modifier.weight(1f).height(buttonHeight)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
+        // Row 3: Recording & Quick Notes
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (recordingEnabled) {
+                InCallButton(
+                    icon = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                    label = if (isRecording) stringResource(R.string.recording) else stringResource(R.string.record),
+                    isActive = isRecording,
+                    onClick = onToggleRecording,
+                    shape = btnShape,
+                    isPulsingRecording = isRecording,
+                    modifier = Modifier.weight(1f).height(buttonHeight)
+                )
+            } else {
                 Spacer(modifier = Modifier.weight(1f))
             }
+
+            InCallButton(
+                icon = Icons.Default.Quickreply,
+                label = stringResource(R.string.quick_responses),
+                isActive = isQuickNotesOpen,
+                onClick = onOpenQuickNotes,
+                shape = btnShape,
+                modifier = Modifier.weight(1f).height(buttonHeight)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

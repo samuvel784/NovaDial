@@ -7,9 +7,16 @@ package com.example.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -17,57 +24,62 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 
+/** Rounder, softer shapes: cards 24 dp, dialogs and sheets 32 dp. */
 val UnifiedSquircleMaterialShapes = Shapes(
     extraSmall = RoundedCornerShape(10.dp),
     small = AppShapes.Chip,
     medium = AppShapes.Card,
     large = AppShapes.Dialog,
-    extraLarge = RoundedCornerShape(36.dp)
+    extraLarge = RoundedCornerShape(40.dp)
 )
+
+// ---------------------------------------------------------------------------------------------------------------
+// Call colours (used by the call log, dialpad and call screen)
+// ---------------------------------------------------------------------------------------------------------------
 
 @Composable
 fun getMissedCallColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFFFF6B6B) else Color(0xFFD32F2F)
+    return if (isDark) Color(0xFFFF6B81) else Color(0xFFD92D4A)
 }
 
 @Composable
 fun getCallGreenColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFF34D399) else Color(0xFF059669)
+    return if (isDark) Color(0xFF2DD4A0) else Color(0xFF0E9F6E)
 }
 
 @Composable
 fun getOnCallGreenColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFF003822) else Color(0xFFFFFFFF)
+    return if (isDark) Color(0xFF04281D) else Color(0xFFFFFFFF)
 }
 
 @Composable
 fun getDeclineRedColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFFF43F5E) else Color(0xFFE11D48)
+    return if (isDark) Color(0xFFFF5470) else Color(0xFFE5334F)
 }
 
 @Composable
 fun getOnDeclineRedColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFF4C0519) else Color(0xFFFFFFFF)
+    return if (isDark) Color(0xFF3A0610) else Color(0xFFFFFFFF)
 }
 
 @Composable
 fun getDialedCallColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFFB0BEC5) else Color(0xFF546E7A)
+    return if (isDark) Color(0xFFA9B2CC) else Color(0xFF5A6482)
 }
 
 @Composable
 fun getReceivedCallColor(): Color {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (isDark) Color(0xFF4CAF50) else Color(0xFF2E7D32)
+    return if (isDark) Color(0xFF3DDC97) else Color(0xFF0E8F5F)
 }
 
-fun parseHexColor(hex: String, fallback: Color = Color(0xFF5A4BE0)): Color {
+fun parseHexColor(hex: String, fallback: Color = Color(0xFF6E5BFF)): Color {
     return try {
         val clean = hex.removePrefix("#").trim()
         val colorInt = when (clean.length) {
@@ -81,335 +93,9 @@ fun parseHexColor(hex: String, fallback: Color = Color(0xFF5A4BE0)): Color {
     }
 }
 
-fun getCustomSeedColorScheme(hex: String, darkTheme: Boolean): ColorScheme {
-    val seed = parseHexColor(hex)
-    return if (darkTheme) {
-        darkColorScheme(
-            primary = seed,
-            onPrimary = Color.Black,
-            primaryContainer = seed.copy(alpha = 0.35f),
-            onPrimaryContainer = Color.White,
-            secondary = seed.copy(alpha = 0.80f),
-            onSecondary = Color.Black,
-            secondaryContainer = seed.copy(alpha = 0.25f),
-            onSecondaryContainer = Color.White,
-            tertiary = seed.copy(alpha = 0.90f),
-            onTertiary = Color.Black,
-            tertiaryContainer = seed.copy(alpha = 0.30f),
-            onTertiaryContainer = Color.White,
-            background = Color(0xFF0B0918),
-            surface = Color(0xFF120F1F),
-            surfaceVariant = seed.copy(alpha = 0.18f),
-            onSurface = Color(0xFFEEEAFF),
-            outline = seed.copy(alpha = 0.60f)
-        )
-    } else {
-        lightColorScheme(
-            primary = seed,
-            onPrimary = Color.White,
-            primaryContainer = seed.copy(alpha = 0.20f),
-            onPrimaryContainer = Color.Black,
-            secondary = seed.copy(alpha = 0.85f),
-            onSecondary = Color.White,
-            secondaryContainer = seed.copy(alpha = 0.15f),
-            onSecondaryContainer = Color.Black,
-            tertiary = seed.copy(alpha = 0.75f),
-            onTertiary = Color.White,
-            tertiaryContainer = seed.copy(alpha = 0.18f),
-            onTertiaryContainer = Color.Black,
-            background = Color(0xFFFBFAFF),
-            surface = Color(0xFFFBFAFF),
-            surfaceVariant = seed.copy(alpha = 0.12f),
-            onSurface = Color(0xFF1A1726),
-            outline = seed.copy(alpha = 0.50f)
-        )
-    }
-}
-
-/**
- * NovaDial "Aurora" theme set.
- *
- * Replaces the upstream Secure Dialer palettes. The default is [novaAurora]
- * (indigo -> violet -> orchid). Any legacy or unknown stored key falls back to
- * Aurora, so upgrading users always see a valid scheme.
- */
-fun getColorSchemeForTheme(
-    themeColor: String,
-    darkTheme: Boolean,
-    customColorHex: String = "#5A4BE0"
-): ColorScheme {
-    if (themeColor == "custom") {
-        return getCustomSeedColorScheme(customColorHex, darkTheme)
-    }
-
-    return when (themeColor) {
-        "nova_nebula" -> novaNebula(darkTheme)
-        "nova_glacier" -> novaGlacier(darkTheme)
-        "nova_ember" -> novaEmber(darkTheme)
-        "nova_forest" -> novaForest(darkTheme)
-        "nova_mono" -> novaMono(darkTheme)
-        // "nova_aurora" and every legacy key (expressive_lime, ocean_sapphire, ...)
-        else -> novaAurora(darkTheme)
-    }
-}
-
-private fun novaAurora(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFFB9AEFF),
-    onPrimary = Color(0xFF241A66),
-    primaryContainer = Color(0xFF3B2FA8),
-    onPrimaryContainer = Color(0xFFE6E2FF),
-    secondary = Color(0xFFCBBFFF),
-    onSecondary = Color(0xFF33207A),
-    secondaryContainer = Color(0xFF4A38C2),
-    onSecondaryContainer = Color(0xFFECE6FF),
-    tertiary = Color(0xFFE6A6FF),
-    onTertiary = Color(0xFF4A0F63),
-    tertiaryContainer = Color(0xFF6E1E93),
-    onTertiaryContainer = Color(0xFFF6E3FF),
-    background = Color(0xFF0B0918),
-    surface = Color(0xFF0B0918),
-    surfaceVariant = Color(0xFF211D33),
-    onSurface = Color(0xFFEEEAFF),
-    outline = Color(0xFF928FA6)
-) else lightColorScheme(
-    primary = Color(0xFF5A4BE0),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE6E2FF),
-    onPrimaryContainer = Color(0xFF190766),
-    secondary = Color(0xFF7C5CFF),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFECE6FF),
-    onSecondaryContainer = Color(0xFF250C63),
-    tertiary = Color(0xFFB14BE0),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFF6E3FF),
-    onTertiaryContainer = Color(0xFF3B0054),
-    background = Color(0xFFFBFAFF),
-    surface = Color(0xFFFBFAFF),
-    surfaceVariant = Color(0xFFE9E6F5),
-    onSurface = Color(0xFF1A1726),
-    outline = Color(0xFF7A7690)
-)
-
-private fun novaNebula(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFFD8B4FE),
-    onPrimary = Color(0xFF3B0764),
-    primaryContainer = Color(0xFF6B21A8),
-    onPrimaryContainer = Color(0xFFF3E8FF),
-    secondary = Color(0xFFF0ABFC),
-    onSecondary = Color(0xFF4A044E),
-    secondaryContainer = Color(0xFF86198F),
-    onSecondaryContainer = Color(0xFFFAE8FF),
-    tertiary = Color(0xFFC4B5FD),
-    onTertiary = Color(0xFF2E1065),
-    tertiaryContainer = Color(0xFF5B21B6),
-    onTertiaryContainer = Color(0xFFEDE9FE),
-    background = Color(0xFF14001F),
-    surface = Color(0xFF14001F),
-    surfaceVariant = Color(0xFF26162E),
-    onSurface = Color(0xFFF6EDFA),
-    outline = Color(0xFFA192AF)
-) else lightColorScheme(
-    primary = Color(0xFF7E22CE),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFF3E8FF),
-    onPrimaryContainer = Color(0xFF3B0764),
-    secondary = Color(0xFFA21CAF),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFFAE8FF),
-    onSecondaryContainer = Color(0xFF4A044E),
-    tertiary = Color(0xFF6D28D9),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFEDE9FE),
-    onTertiaryContainer = Color(0xFF2E1065),
-    background = Color(0xFFFDFAFF),
-    surface = Color(0xFFFDFAFF),
-    surfaceVariant = Color(0xFFECE6F5),
-    onSurface = Color(0xFF1E1630),
-    outline = Color(0xFF7C6F8F)
-)
-
-private fun novaGlacier(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFF7DD3FC),
-    onPrimary = Color(0xFF0C4A6E),
-    primaryContainer = Color(0xFF075985),
-    onPrimaryContainer = Color(0xFFE0F2FE),
-    secondary = Color(0xFF67E8F9),
-    onSecondary = Color(0xFF164E63),
-    secondaryContainer = Color(0xFF155E75),
-    onSecondaryContainer = Color(0xFFCFFAFE),
-    tertiary = Color(0xFF93C5FD),
-    onTertiary = Color(0xFF172554),
-    tertiaryContainer = Color(0xFF1E40AF),
-    onTertiaryContainer = Color(0xFFDBEAFE),
-    background = Color(0xFF04121C),
-    surface = Color(0xFF04121C),
-    surfaceVariant = Color(0xFF12222F),
-    onSurface = Color(0xFFE6F1FA),
-    outline = Color(0xFF7C8D9C)
-) else lightColorScheme(
-    primary = Color(0xFF0369A1),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE0F2FE),
-    onPrimaryContainer = Color(0xFF0C4A6E),
-    secondary = Color(0xFF0E7490),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFCFFAFE),
-    onSecondaryContainer = Color(0xFF164E63),
-    tertiary = Color(0xFF1D4ED8),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFDBEAFE),
-    onTertiaryContainer = Color(0xFF172554),
-    background = Color(0xFFF8FBFF),
-    surface = Color(0xFFF8FBFF),
-    surfaceVariant = Color(0xFFE2EDF5),
-    onSurface = Color(0xFF14202B),
-    outline = Color(0xFF6B7B8A)
-)
-
-private fun novaEmber(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFFFDBA74),
-    onPrimary = Color(0xFF431407),
-    primaryContainer = Color(0xFF9A3412),
-    onPrimaryContainer = Color(0xFFFFEDD5),
-    secondary = Color(0xFFFCD34D),
-    onSecondary = Color(0xFF451A03),
-    secondaryContainer = Color(0xFFB45309),
-    onSecondaryContainer = Color(0xFFFEF3C7),
-    tertiary = Color(0xFFFDA4AF),
-    onTertiary = Color(0xFF4C0519),
-    tertiaryContainer = Color(0xFF9F1239),
-    onTertiaryContainer = Color(0xFFFFE4E6),
-    background = Color(0xFF1A0F06),
-    surface = Color(0xFF1A0F06),
-    surfaceVariant = Color(0xFF2E2014),
-    onSurface = Color(0xFFFBEEDF),
-    outline = Color(0xFFA9917C)
-) else lightColorScheme(
-    primary = Color(0xFFC2410C),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFFFEDD5),
-    onPrimaryContainer = Color(0xFF431407),
-    secondary = Color(0xFFB45309),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFFEF3C7),
-    onSecondaryContainer = Color(0xFF451A03),
-    tertiary = Color(0xFFBE123C),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFFFE4E6),
-    onTertiaryContainer = Color(0xFF4C0519),
-    background = Color(0xFFFFFBF7),
-    surface = Color(0xFFFFFBF7),
-    surfaceVariant = Color(0xFFF5E7DA),
-    onSurface = Color(0xFF2A1A10),
-    outline = Color(0xFF8C7767)
-)
-
-private fun novaForest(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFF5EEAD4),
-    onPrimary = Color(0xFF042F2E),
-    primaryContainer = Color(0xFF115E59),
-    onPrimaryContainer = Color(0xFFCCFBF1),
-    secondary = Color(0xFF6EE7B7),
-    onSecondary = Color(0xFF022C22),
-    secondaryContainer = Color(0xFF065F46),
-    onSecondaryContainer = Color(0xFFD1FAE5),
-    tertiary = Color(0xFFBEF264),
-    onTertiary = Color(0xFF1A2E05),
-    tertiaryContainer = Color(0xFF3F6212),
-    onTertiaryContainer = Color(0xFFECFCCB),
-    background = Color(0xFF04140F),
-    surface = Color(0xFF04140F),
-    surfaceVariant = Color(0xFF11241D),
-    onSurface = Color(0xFFE4F2EC),
-    outline = Color(0xFF7E9188)
-) else lightColorScheme(
-    primary = Color(0xFF0F766E),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFCCFBF1),
-    onPrimaryContainer = Color(0xFF042F2E),
-    secondary = Color(0xFF047857),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFD1FAE5),
-    onSecondaryContainer = Color(0xFF022C22),
-    tertiary = Color(0xFF4D7C0F),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFECFCCB),
-    onTertiaryContainer = Color(0xFF1A2E05),
-    background = Color(0xFFF7FCFA),
-    surface = Color(0xFFF7FCFA),
-    surfaceVariant = Color(0xFFDFEEE8),
-    onSurface = Color(0xFF13211C),
-    outline = Color(0xFF6C7B74)
-)
-
-private fun novaMono(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
-    primary = Color(0xFFE4E3EA),
-    onPrimary = Color(0xFF1A1A1E),
-    primaryContainer = Color(0xFF3A3A42),
-    onPrimaryContainer = Color(0xFFF2F1F7),
-    secondary = Color(0xFFB9B9C2),
-    onSecondary = Color(0xFF1A1A1E),
-    secondaryContainer = Color(0xFF2C2C33),
-    onSecondaryContainer = Color(0xFFE7E7EC),
-    tertiary = Color(0xFFCBCBD4),
-    onTertiary = Color(0xFF17171B),
-    tertiaryContainer = Color(0xFF33333B),
-    onTertiaryContainer = Color(0xFFE4E4E9),
-    background = Color(0xFF0C0C0F),
-    surface = Color(0xFF0C0C0F),
-    surfaceVariant = Color(0xFF1D1D22),
-    onSurface = Color(0xFFECECF1),
-    outline = Color(0xFF8E8E97)
-) else lightColorScheme(
-    primary = Color(0xFF1F1F24),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE7E6EC),
-    onPrimaryContainer = Color(0xFF111114),
-    secondary = Color(0xFF45454D),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFEDEDF1),
-    onSecondaryContainer = Color(0xFF1A1A1E),
-    tertiary = Color(0xFF33333B),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFE4E4E9),
-    onTertiaryContainer = Color(0xFF17171B),
-    background = Color(0xFFFAFAFC),
-    surface = Color(0xFFFAFAFC),
-    surfaceVariant = Color(0xFFE9E9EF),
-    onSurface = Color(0xFF1A1A1E),
-    outline = Color(0xFF77777F)
-)
-
 val LocalM3Expressive = staticCompositionLocalOf { true }
 val LocalAmoledMode = staticCompositionLocalOf { false }
 
-fun getExpressiveColorScheme(colorScheme: ColorScheme, darkTheme: Boolean): ColorScheme {
-    return if (darkTheme) {
-        colorScheme.copy(
-            primaryContainer = colorScheme.primary.copy(alpha = 0.35f),
-            onPrimaryContainer = Color.White,
-            secondaryContainer = colorScheme.secondary.copy(alpha = 0.30f),
-            onSecondaryContainer = Color.White,
-            surfaceVariant = colorScheme.primary.copy(alpha = 0.18f),
-            tertiaryContainer = colorScheme.tertiary.copy(alpha = 0.30f)
-        )
-    } else {
-        colorScheme.copy(
-            primaryContainer = colorScheme.primary.copy(alpha = 0.22f),
-            secondaryContainer = colorScheme.secondary.copy(alpha = 0.22f),
-            surfaceVariant = colorScheme.primary.copy(alpha = 0.12f),
-            tertiaryContainer = colorScheme.tertiary.copy(alpha = 0.20f)
-        )
-    }
-}
-
-/**
- * NovaDial appearance modes.
- *  - [DAY]     : clean white interface (light).
- *  - [DEFAULT] : the signature deep-blue interface (dark).
- *  - [NIGHT]   : true-black interface (dark, pure #000000).
- */
 enum class ThemeMode(val key: String) {
     DAY("day"),
     DEFAULT("default"),
@@ -421,162 +107,193 @@ enum class ThemeMode(val key: String) {
     }
 }
 
-private fun dayScheme(): ColorScheme = lightColorScheme(
-    primary = Color(0xFF0A84FF),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFD6E9FF),
-    onPrimaryContainer = Color(0xFF00274D),
-    secondary = Color(0xFF1A73E8),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE3F0FF),
-    onSecondaryContainer = Color(0xFF00325C),
-    tertiary = Color(0xFF0091C2),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFD6F0FF),
-    onTertiaryContainer = Color(0xFF00344A),
-    background = Color(0xFFFFFFFF),
-    surface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFEEF3FA),
-    onSurface = Color(0xFF101418),
-    outline = Color(0xFF9AA4B2)
+// ---------------------------------------------------------------------------------------------------------------
+// Surfaces: three layered backgrounds. Day = soft porcelain, Default = midnight, Night = true black (AMOLED).
+// Cards sit one step above the page, sheets and menus two steps above, so depth comes from colour, not shadows.
+// ---------------------------------------------------------------------------------------------------------------
+
+private class ModeSurfaces(
+    val background: Color,
+    val surface: Color,
+    val dim: Color,
+    val bright: Color,
+    val lowest: Color,
+    val low: Color,
+    val container: Color,
+    val high: Color,
+    val highest: Color,
+    val variant: Color,
+    val onSurface: Color,
+    val onSurfaceVariant: Color,
+    val outline: Color,
+    val outlineVariant: Color,
+    val inverseSurface: Color,
+    val inverseOnSurface: Color,
+    val error: Color,
+    val onError: Color,
+    val errorContainer: Color,
+    val onErrorContainer: Color
 )
 
-private fun defaultBlueScheme(): ColorScheme = darkColorScheme(
-    primary = Color(0xFF4DA3FF),
-    onPrimary = Color(0xFF00274D),
-    primaryContainer = Color(0xFF0A84FF),
-    onPrimaryContainer = Color(0xFFD6E9FF),
-    secondary = Color(0xFF7FB8FF),
-    onSecondary = Color(0xFF002E52),
-    secondaryContainer = Color(0xFF0E4E86),
-    onSecondaryContainer = Color(0xFFD6E9FF),
-    tertiary = Color(0xFF6ED0FF),
-    onTertiary = Color(0xFF00344A),
-    tertiaryContainer = Color(0xFF0A5A78),
-    onTertiaryContainer = Color(0xFFC9ECFF),
-    background = Color(0xFF060A12),
-    surface = Color(0xFF060A12),
-    surfaceVariant = Color(0xFF121B2E),
-    onSurface = Color(0xFFE6EEFF),
-    outline = Color(0xFF6B7A90)
+private val DaySurfaces = ModeSurfaces(
+    background = Color(0xFFF6F7FB), surface = Color(0xFFFFFFFF),
+    dim = Color(0xFFE3E6F0), bright = Color(0xFFFFFFFF),
+    lowest = Color(0xFFFFFFFF), low = Color(0xFFFAFAFE), container = Color(0xFFF2F4FA),
+    high = Color(0xFFECEFF7), highest = Color(0xFFE4E8F2),
+    variant = Color(0xFFE9ECF5), onSurface = Color(0xFF0E1120), onSurfaceVariant = Color(0xFF596079),
+    outline = Color(0xFF8890A8), outlineVariant = Color(0xFFDDE1EC),
+    inverseSurface = Color(0xFF1E2236), inverseOnSurface = Color(0xFFF2F4FB),
+    error = Color(0xFFD92D4A), onError = Color.White,
+    errorContainer = Color(0xFFFFE3E8), onErrorContainer = Color(0xFF5A0A1B)
 )
 
-private fun nightScheme(): ColorScheme = darkColorScheme(
-    primary = Color(0xFF4DA3FF),
-    onPrimary = Color(0xFF00274D),
-    primaryContainer = Color(0xFF0A3D66),
-    onPrimaryContainer = Color(0xFFD6E9FF),
-    secondary = Color(0xFF9CC7FF),
-    onSecondary = Color(0xFF00325C),
-    secondaryContainer = Color(0xFF123A63),
-    onSecondaryContainer = Color(0xFFD6E9FF),
-    tertiary = Color(0xFF6ED0FF),
-    onTertiary = Color(0xFF00344A),
-    tertiaryContainer = Color(0xFF0A4A63),
-    onTertiaryContainer = Color(0xFFC9ECFF),
-    background = Color(0xFF000000),
-    surface = Color(0xFF000000),
-    surfaceVariant = Color(0xFF0E0E10),
-    onSurface = Color(0xFFFFFFFF),
-    outline = Color(0xFF3A3A3A)
+private val MidnightSurfaces = ModeSurfaces(
+    background = Color(0xFF090B13), surface = Color(0xFF0D1019),
+    dim = Color(0xFF090B13), bright = Color(0xFF232A42),
+    lowest = Color(0xFF07080F), low = Color(0xFF0F1220), container = Color(0xFF141829),
+    high = Color(0xFF1A1F34), highest = Color(0xFF222842),
+    variant = Color(0xFF1B2036), onSurface = Color(0xFFE9ECF8), onSurfaceVariant = Color(0xFFA0A8C2),
+    outline = Color(0xFF6B7390), outlineVariant = Color(0xFF262D47),
+    inverseSurface = Color(0xFFE9ECF8), inverseOnSurface = Color(0xFF141829),
+    error = Color(0xFFFF6B81), onError = Color(0xFF3A0610),
+    errorContainer = Color(0xFF4A1020), onErrorContainer = Color(0xFFFFD9DF)
 )
 
-fun themeModeScheme(mode: ThemeMode): ColorScheme = when (mode) {
-    ThemeMode.DAY -> dayScheme()
-    ThemeMode.NIGHT -> nightScheme()
-    ThemeMode.DEFAULT -> defaultBlueScheme()
+private val OnyxSurfaces = ModeSurfaces(
+    background = Color(0xFF000000), surface = Color(0xFF000000),
+    dim = Color(0xFF000000), bright = Color(0xFF1C1C23),
+    lowest = Color(0xFF000000), low = Color(0xFF08080B), container = Color(0xFF0E0E12),
+    high = Color(0xFF15151B), highest = Color(0xFF1C1C23),
+    variant = Color(0xFF16161C), onSurface = Color(0xFFFFFFFF), onSurfaceVariant = Color(0xFFC9CBD6),
+    outline = Color(0xFF5A5C68), outlineVariant = Color(0xFF24252D),
+    inverseSurface = Color(0xFFF2F3F8), inverseOnSurface = Color(0xFF0E0E12),
+    error = Color(0xFFFF6B81), onError = Color(0xFF3A0610),
+    errorContainer = Color(0xFF3A0F19), onErrorContainer = Color(0xFFFFD9DF)
+)
+
+private fun surfacesFor(mode: ThemeMode): ModeSurfaces = when (mode) {
+    ThemeMode.DAY -> DaySurfaces
+    ThemeMode.DEFAULT -> MidnightSurfaces
+    ThemeMode.NIGHT -> OnyxSurfaces
+}
+
+private fun assembleScheme(mode: ThemeMode, accent: AccentTokens): ColorScheme {
+    val s = surfacesFor(mode)
+    val base = if (mode == ThemeMode.DAY) lightColorScheme() else darkColorScheme()
+    return base.copy(
+        primary = accent.primary,
+        onPrimary = accent.onPrimary,
+        primaryContainer = accent.primaryContainer,
+        onPrimaryContainer = accent.onPrimaryContainer,
+        inversePrimary = accent.primaryContainer,
+        secondary = accent.secondary,
+        onSecondary = accent.onSecondary,
+        secondaryContainer = accent.secondaryContainer,
+        onSecondaryContainer = accent.onSecondaryContainer,
+        tertiary = accent.tertiary,
+        onTertiary = accent.onTertiary,
+        tertiaryContainer = accent.tertiaryContainer,
+        onTertiaryContainer = accent.onTertiaryContainer,
+        background = s.background,
+        onBackground = s.onSurface,
+        surface = s.surface,
+        onSurface = s.onSurface,
+        surfaceVariant = s.variant,
+        onSurfaceVariant = s.onSurfaceVariant,
+        surfaceTint = Color.Transparent,
+        inverseSurface = s.inverseSurface,
+        inverseOnSurface = s.inverseOnSurface,
+        outline = s.outline,
+        outlineVariant = s.outlineVariant,
+        scrim = Color(0x99000000),
+        surfaceBright = s.bright,
+        surfaceDim = s.dim,
+        surfaceContainerLowest = s.lowest,
+        surfaceContainerLow = s.low,
+        surfaceContainer = s.container,
+        surfaceContainerHigh = s.high,
+        surfaceContainerHighest = s.highest,
+        error = s.error,
+        onError = s.onError,
+        errorContainer = s.errorContainer,
+        onErrorContainer = s.onErrorContainer
+    )
+}
+
+/** Colour scheme of one accent in the Default (dark) or Day (light) mode. Used by the Appearance swatches too. */
+fun getColorSchemeForTheme(
+    themeColor: String,
+    darkTheme: Boolean,
+    customColorHex: String = "#6E5BFF"
+): ColorScheme {
+    val mode = if (darkTheme) ThemeMode.DEFAULT else ThemeMode.DAY
+    val surfaces = surfacesFor(mode)
+    val accent = buildAccent(accentSeed(themeColor, customColorHex), darkTheme, surfaces.container, surfaces.background)
+    return assembleScheme(mode, accent)
+}
+
+/** Dynamic (wallpaper) colours keep their own accent, but the Night mode still gets true-black surfaces. */
+private fun nightOverride(scheme: ColorScheme): ColorScheme {
+    val s = OnyxSurfaces
+    return scheme.copy(
+        background = s.background, surface = s.surface, surfaceVariant = s.variant,
+        surfaceTint = Color.Transparent, outline = s.outline, outlineVariant = s.outlineVariant,
+        surfaceContainerLowest = s.lowest, surfaceContainerLow = s.low, surfaceContainer = s.container,
+        surfaceContainerHigh = s.high, surfaceContainerHighest = s.highest,
+        onBackground = s.onSurface, onSurface = s.onSurface, onSurfaceVariant = s.onSurfaceVariant
+    )
 }
 
 @Composable
 fun MyApplicationTheme(
-  themeMode: ThemeMode? = null,
-  darkTheme: Boolean? = null,
-  dynamicColor: Boolean = false,
-  themeColor: String = "system",
-  customColorHex: String = "#5A4BE0",
-  isAmoledMode: Boolean = false,
-  isM3Expressive: Boolean = true,
-  content: @Composable () -> Unit,
+    themeMode: ThemeMode? = null,
+    darkTheme: Boolean? = null,
+    dynamicColor: Boolean = false,
+    themeColor: String = "system",
+    customColorHex: String = "#6E5BFF",
+    isAmoledMode: Boolean = false,
+    isM3Expressive: Boolean = true,
+    content: @Composable () -> Unit,
 ) {
-  val mode = themeMode ?: when (darkTheme) {
-      false -> ThemeMode.DAY
-      true -> ThemeMode.DEFAULT
-      null -> ThemeMode.DEFAULT
-  }
-  val dark = mode != ThemeMode.DAY
+    val mode = themeMode ?: when (darkTheme) {
+        false -> ThemeMode.DAY
+        true -> ThemeMode.DEFAULT
+        null -> ThemeMode.DEFAULT
+    }
+    val dark = mode != ThemeMode.DAY
 
-  var colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
+    val useDynamic = dynamicColor && themeColor == "system" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val context = LocalContext.current
 
-      else -> themeModeScheme(mode)
+    // Building a colour scheme allocates dozens of objects, so it is done once per setting change,
+    // not on every recomposition.
+    val colorScheme = remember(mode, useDynamic, themeColor, customColorHex) {
+        if (useDynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val dynamic = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (mode == ThemeMode.NIGHT) nightOverride(dynamic) else dynamic.copy(surfaceTint = Color.Transparent)
+        } else {
+            val surfaces = surfacesFor(mode)
+            assembleScheme(mode, buildAccent(accentSeed(themeColor, customColorHex), dark, surfaces.container, surfaces.background))
+        }
     }
 
-  // User-selected accent palette (Appearance ▸ Accent Color). "system" keeps the base /
-  // dynamic scheme; any palette overrides only the accent families so the Day / Default /
-  // Night background choice is preserved.
-  if (themeColor != "system") {
-      val accent = getColorSchemeForTheme(themeColor, dark, customColorHex)
-      colorScheme = colorScheme.copy(
-          primary = accent.primary,
-          onPrimary = accent.onPrimary,
-          primaryContainer = accent.primaryContainer,
-          onPrimaryContainer = accent.onPrimaryContainer,
-          secondary = accent.secondary,
-          onSecondary = accent.onSecondary,
-          secondaryContainer = accent.secondaryContainer,
-          onSecondaryContainer = accent.onSecondaryContainer,
-          tertiary = accent.tertiary,
-          onTertiary = accent.onTertiary,
-          tertiaryContainer = accent.tertiaryContainer,
-          onTertiaryContainer = accent.onTertiaryContainer
-      )
-  }
+    val novaColors = remember(colorScheme, dark) {
+        buildNovaColors(colorScheme.primary, colorScheme.outlineVariant, colorScheme.surface, dark)
+    }
+    val unifiedShapes = remember { calculateUnifiedShapes(ShapeStyle.SQUIRCLE) }
+    val isNight = mode == ThemeMode.NIGHT
 
-  if (isM3Expressive) {
-      colorScheme = getExpressiveColorScheme(colorScheme, dark)
-  }
-
-  // Glassy surface treatment: no tint wash, soft dividers, muted scrim.
-  colorScheme = colorScheme.copy(
-      surfaceTint = Color.Transparent,
-      outlineVariant = colorScheme.outline.copy(alpha = 0.32f),
-      scrim = Color(0x99000000)
-  )
-
-  val effectiveAmoled = mode == ThemeMode.NIGHT
-  if (effectiveAmoled) {
-      colorScheme = colorScheme.copy(
-          background = Color(0xFF000000),
-          surface = Color(0xFF000000),
-          surfaceVariant = Color(0xFF0E0E10),
-          surfaceTint = Color.Transparent,
-          outline = Color(0xFF2E2E2E),
-          outlineVariant = Color(0xFF1C1C1C),
-          surfaceContainerLowest = Color(0xFF000000),
-          surfaceContainerLow = Color(0xFF000000),
-          surfaceContainer = Color(0xFF08080A),
-          surfaceContainerHigh = Color(0xFF101012),
-          surfaceContainerHighest = Color(0xFF18181A),
-          onBackground = Color(0xFFFFFFFF),
-          onSurface = Color(0xFFFFFFFF),
-          onSurfaceVariant = Color(0xFFD4D4D8)
-      )
-  }
-
-  CompositionLocalProvider(
-      LocalM3Expressive provides isM3Expressive,
-      LocalAmoledMode provides effectiveAmoled,
-      LocalUnifiedShapes provides calculateUnifiedShapes(ShapeStyle.SQUIRCLE)
-  ) {
-      MaterialTheme(
-          colorScheme = colorScheme,
-          shapes = UnifiedSquircleMaterialShapes,
-          typography = if (isM3Expressive) ExpressiveTypography else Typography,
-          content = content
-      )
-  }
+    CompositionLocalProvider(
+        LocalM3Expressive provides isM3Expressive,
+        LocalAmoledMode provides isNight,
+        LocalUnifiedShapes provides unifiedShapes,
+        LocalNovaColors provides novaColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = UnifiedSquircleMaterialShapes,
+            typography = if (isM3Expressive) ExpressiveTypography else Typography,
+            content = content
+        )
+    }
 }

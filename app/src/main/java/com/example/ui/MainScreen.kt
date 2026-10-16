@@ -17,6 +17,10 @@
 
 package com.example.ui
 
+import kotlin.math.absoluteValue
+import com.example.ui.components.NovaFab
+import com.example.ui.theme.NovaMotion
+import com.example.ui.theme.novaCanvas
 import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
@@ -46,6 +50,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -63,6 +68,7 @@ import com.example.model.CallRecording
 import com.example.model.CallType
 import com.example.ui.components.*
 import com.example.ui.viewmodel.DialerViewModel
+import com.example.util.DuplicateGroup
 import com.example.util.ContactRingtonePrefs
 import com.example.util.MultiSimManager
 import com.example.util.RichHapticEngine
@@ -346,6 +352,7 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .novaCanvas()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues)
                 .imePadding()
@@ -422,7 +429,7 @@ fun MainScreen(
                     HeaderSearchBar(
                         searchQuery = searchQuery,
                         onQueryChange = { viewModel.onSearchQueryChange(it) },
-                        menuVisible = currentSlotKey == "HOME",
+                        menuVisible = true,
                         onMenuClick = {
                             settingsInitialTab = 0
                             isSettingsVisible = true
@@ -453,7 +460,20 @@ fun MainScreen(
                         beyondViewportPageCount = 1,
                         userScrollEnabled = !isRowSwipeEnabled || currentSlot != "RECENTS"
                     ) { page ->
-                        when (tabSlots.getOrElse(page) { "HOME" }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val distance = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                                        .absoluteValue
+                                        .coerceIn(0f, 1f)
+                                    alpha = 1f - 0.30f * distance
+                                    val sc = 1f - 0.035f * distance
+                                    scaleX = sc
+                                    scaleY = sc
+                                }
+                        ) {
+                            when (tabSlots.getOrElse(page) { "HOME" }) {
                             "HOME" -> {
                                 ContactsTabContent(
                                     viewModel = viewModel,
@@ -533,6 +553,42 @@ fun MainScreen(
                                 )
                             }
                         }
+                        }
+                    }
+                    // Floating keypad button.
+                    // It lives in the content area (the space between the search bar and the bottom navigation), so it
+                    // always floats a fixed distance ABOVE the navigation bar and above the minimised-call banner, and
+                    // it can no longer change the height or position of the navigation bar.
+                    if (!WindowInsets.isImeVisible) {
+                        // pops in with a little spring every time it appears
+                        var fabShown by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { fabShown = true }
+                        val fabScale = animateFloatAsState(
+                            targetValue = if (fabShown) 1f else 0f,
+                            animationSpec = NovaMotion.bouncy(),
+                            label = "fabScale"
+                        )
+                        NovaFab(
+                            onClick = {
+                                RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                isDialpadVisible = true
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 20.dp, bottom = 28.dp)
+                                .graphicsLayer {
+                                    val sc = fabScale.value
+                                    scaleX = sc
+                                    scaleY = sc
+                                    alpha = sc.coerceIn(0f, 1f)
+                                }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Dialpad,
+                                contentDescription = stringResource(R.string.tab_dialpad),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                 }
 
@@ -555,38 +611,22 @@ fun MainScreen(
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    if (!WindowInsets.isImeVisible) {
-                        BottomNavBar(
-                            selectedTab = selectedTab,
-                            onTabSelected = { targetTab ->
-                                selectedTab = targetTab
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(targetTab)
-                                }
-                            },
-                            tabSlots = tabSlots
-                        )
-                        // Floating keypad button — floats above the nav bar on every menu
-                        FloatingActionButton(
-                            onClick = {
-                                RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
-                                isDialpadVisible = true
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 18.dp, bottom = 116.dp),
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shape = MaterialTheme.shapes.extraLarge
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Dialpad,
-                                contentDescription = stringResource(R.string.tab_dialpad),
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                    }
+                // Bottom navigation (Home / Recent / Favourites).
+                // It is the LAST child of the Column and has no other layout wrapped around it, so it is always
+                // flush with the bottom edge of the screen. (Before, it shared a Box with the keypad button; that
+                // Box grew to 172 dp because of the button's bottom padding, and the bar was drawn at the TOP of it,
+                // floating about 90 dp above the bottom and overlapping the button.)
+                if (!WindowInsets.isImeVisible) {
+                    BottomNavBar(
+                        selectedTab = selectedTab,
+                        onTabSelected = { targetTab ->
+                            selectedTab = targetTab
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(targetTab)
+                            }
+                        },
+                        tabSlots = tabSlots
+                    )
                 }
             }
 
@@ -828,6 +868,36 @@ fun MainScreen(
                             onClick = { viewModel.dismissPostCallRecordingNote() }
                         ) {
                             Text(stringResource(R.string.btn_cancel))
+                        }
+                    }
+                )
+            }
+
+            val showDuplicatePrompt by viewModel.showDuplicatePrompt
+            val duplicateGroups by viewModel.duplicateGroups
+            if (showDuplicatePrompt && duplicateGroups.isNotEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.showDuplicatePrompt.value = false },
+                    title = { Text(stringResource(R.string.dup_finder_title), fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column {
+                            Text(stringResource(R.string.dup_finder_sub))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Found ${duplicateGroups.size} duplicate contact group(s). Review and merge/delete duplicates in Settings.", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            viewModel.showDuplicatePrompt.value = false
+                            settingsInitialTab = 11
+                            isSettingsVisible = true
+                        }) {
+                            Text("View Duplicates")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.showDuplicatePrompt.value = false }) {
+                            Text("Dismiss")
                         }
                     }
                 )

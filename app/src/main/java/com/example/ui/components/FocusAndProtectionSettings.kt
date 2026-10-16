@@ -28,6 +28,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Campaign
@@ -44,12 +47,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.R
+import com.example.model.getAvatarShape
+import com.example.model.getInitials
 import com.example.telecom.AnnouncerScript
 import com.example.telecom.CallProtectionPrefs
 import com.example.telecom.CallerAnnouncerManager
@@ -95,7 +104,8 @@ fun FocusAndProtectionSettings(
     var announceUnknown by remember { mutableStateOf(CallProtectionPrefs.isAnnounceUnknown(context)) }
 
     var showAddVipDialog by remember { mutableStateOf(false) }
-    var vipInput by remember { mutableStateOf("") }
+    var vipSearchInput by remember { mutableStateOf("") }
+    val allContacts by viewModel.allContactsFlow.collectAsStateWithLifecycle()
 
     var dndEnabled by remember { mutableStateOf(DoNotDisturbPrefs.isEnabled(context)) }
     var dndStartMin by remember { mutableIntStateOf(DoNotDisturbPrefs.getStartMin(context)) }
@@ -114,7 +124,9 @@ fun FocusAndProtectionSettings(
         onDispose { announcer.shutdown() }
     }
 
-    val scrollState = rememberScrollState()
+    val scrollState = androidx.compose.runtime.saveable.rememberSaveable(saver = androidx.compose.foundation.ScrollState.Saver) {
+        androidx.compose.foundation.ScrollState(0)
+    }
 
     Column(
         modifier = Modifier
@@ -513,7 +525,7 @@ fun FocusAndProtectionSettings(
                 title = stringResource(R.string.vip_add),
                 subtitle = stringResource(R.string.vip_add_sub),
                 onClick = {
-                    vipInput = ""
+                    vipSearchInput = ""
                     showAddVipDialog = true
                 },
                 icon = Icons.Default.Add,
@@ -698,32 +710,122 @@ fun FocusAndProtectionSettings(
             onDismissRequest = { showAddVipDialog = false },
             title = { Text(stringResource(R.string.vip_add)) },
             text = {
-                OutlinedTextField(
-                    value = vipInput,
-                    onValueChange = { vipInput = it },
-                    label = { Text(stringResource(R.string.vip_add_hint)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (vipInput.isNotBlank()) {
-                            CallProtectionPrefs.addVipNumber(context, vipInput)
-                            vipNumbers = CallProtectionPrefs.getVipNumbers(context).sorted()
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = vipSearchInput,
+                        onValueChange = { vipSearchInput = it },
+                        label = { Text(stringResource(R.string.add_call_search_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    val filteredContacts = remember(vipSearchInput, allContacts) {
+                        val query = vipSearchInput.trim()
+                        if (query.isBlank()) {
+                            allContacts
+                        } else {
+                            allContacts.filter { contact ->
+                                contact.name.contains(query, ignoreCase = true) ||
+                                contact.number.contains(query) ||
+                                contact.getAllNumbers().any { it.number.contains(query) }
+                            }
                         }
-                        showAddVipDialog = false
                     }
-                ) { Text(stringResource(R.string.btn_save)) }
+
+                    if (filteredContacts.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.vip_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(
+                                items = filteredContacts,
+                                key = { "${it.id}_${it.number}" }
+                            ) { contact ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                        if (contact.number.isNotBlank()) {
+                                            CallProtectionPrefs.addVipNumber(context, contact.number)
+                                            vipNumbers = CallProtectionPrefs.getVipNumbers(context).sorted()
+                                            showAddVipDialog = false
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier.size(36.dp),
+                                            shape = getAvatarShape("circular"),
+                                            color = contact.avatarBg
+                                        ) {
+                                            var imageFailed by remember(contact.photoUri) { mutableStateOf(false) }
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (contact.photoUri.isNotEmpty() && !imageFailed) {
+                                                    AsyncImage(
+                                                        model = ImageRequest.Builder(context)
+                                                            .data(contact.photoUri)
+                                                            .size(128, 128)
+                                                            .crossfade(true)
+                                                            .build(),
+                                                        contentDescription = contact.name,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop,
+                                                        onError = { imageFailed = true }
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = contact.avatarText.ifEmpty { getInitials(contact.name) },
+                                                        color = contact.avatarTextColor,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = contact.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = contact.number,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAddVipDialog = false }) {
                     Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
+    }
 
-        if (pickerTarget != null) {
+    if (pickerTarget != null) {
             val current = if (pickerTarget == 0) dndStartMin else dndEndMin
             val timeState = rememberTimePickerState(
                 initialHour = (current / 60) % 24,
@@ -754,7 +856,6 @@ fun FocusAndProtectionSettings(
             )
         }
     }
-}
 
 @Composable
 private fun ProtectionChoiceRow(

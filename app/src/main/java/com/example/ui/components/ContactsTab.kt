@@ -17,16 +17,23 @@
 
 package com.example.ui.components
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +47,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -63,11 +74,18 @@ import com.example.ui.theme.AppShapes
 import com.example.ui.theme.LocalAmoledMode
 import com.example.ui.viewmodel.DialerViewModel
 import com.example.util.RichHapticEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 /** Distinct box designs per page so Home and Favorites don't look identical. */
 enum class ContactCardStyle { HOME, FAVORITES }
+
+/** Flattened grid model: letter section headers + contact cards. */
+private sealed interface ContactGridItem {
+    data class Header(val letter: Char) : ContactGridItem
+    data class Person(val contact: Contact) : ContactGridItem
+}
 
 @Composable
 fun ContactsTabContent(
@@ -135,26 +153,42 @@ fun ContactsTabContent(
         if (result.size <= 1) ('A'..'Z').toList() + '#' else result
     }
 
-    val letterToIndex = remember(contacts) {
+    // Flattened list with section headers so the grid can render letter rows.
+    val gridItems = remember(contacts) {
+        val list = ArrayList<ContactGridItem>(contacts.size + 12)
+        var lastLetter: Char? = null
+        contacts.forEach { contact ->
+            val firstChar = contact.name.trim().firstOrNull()?.uppercaseChar() ?: '#'
+            val letter = if (firstChar.isLetter()) firstChar else '#'
+            if (letter != lastLetter) {
+                list.add(ContactGridItem.Header(letter))
+                lastLetter = letter
+            }
+            list.add(ContactGridItem.Person(contact))
+        }
+        list
+    }
+
+    val letterToIndex = remember(gridItems) {
         val map = HashMap<Char, Int>()
-        for (i in contacts.indices) {
-            val firstChar = contacts[i].name.trim().firstOrNull()?.uppercaseChar() ?: '#'
-            val key = if (firstChar.isLetter()) firstChar else '#'
-            if (!map.containsKey(key)) {
-                map[key] = i
+        gridItems.forEachIndexed { index, item ->
+            if (item is ContactGridItem.Header && !map.containsKey(item.letter)) {
+                map[item.letter] = index
             }
         }
         map
     }
 
-    val activeLetter = remember(gridState, alphabet, contacts) {
+    val activeLetter = remember(gridState, alphabet, gridItems) {
         derivedStateOf {
-            val firstVisibleIndex = gridState.firstVisibleItemIndex
-            val contact = contacts.getOrNull(firstVisibleIndex)
-            val firstChar = contact?.name?.trim()?.firstOrNull()?.uppercaseChar() ?: '#'
-            if (alphabet.contains(firstChar)) firstChar
-            else if (!firstChar.isLetter() && alphabet.contains('#')) '#'
-            else alphabet.firstOrNull() ?: '#'
+            when (val item = gridItems.getOrNull(gridState.firstVisibleItemIndex)) {
+                is ContactGridItem.Header -> item.letter
+                is ContactGridItem.Person -> {
+                    val firstChar = item.contact.name.trim().firstOrNull()?.uppercaseChar() ?: '#'
+                    if (firstChar.isLetter()) firstChar else '#'
+                }
+                null -> alphabet.firstOrNull() ?: '#'
+            }
         }
     }
 
@@ -162,77 +196,21 @@ fun ContactsTabContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 14.dp)
         ) {
             if (!hasPermission && !isLoading) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = stringResource(R.string.permissions_required),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.contacts_perm_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = onRequestPermission,
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Text(stringResource(R.string.enable_contacts_perm))
-                        }
-                    }
-                }
+                PermissionPromptCard(onRequestPermission = onRequestPermission)
             }
 
             if (hasPermission && !isLoading) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 6.dp),
+                        .padding(top = 2.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onAddContactClick,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("add_contact_fab")
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = stringResource(R.string.action_add_contact),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.action_add_contact),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                    AddContactPill(onClick = onAddContactClick)
                 }
             }
 
@@ -243,7 +221,10 @@ fun ContactsTabContent(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(30.dp),
+                        strokeWidth = 3.dp
+                    )
                 }
             } else if (contacts.isEmpty()) {
                 Box(
@@ -263,46 +244,82 @@ fun ContactsTabContent(
                     state = gridState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(end = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 128.dp)
+                        .padding(end = 26.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(
+                        if (cardStyle == ContactCardStyle.FAVORITES) 12.dp else 8.dp
+                    ),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 140.dp)
                 ) {
+                    // One lazy "items" call for the whole list. Registering every contact as its own item() inside a
+                    // forEach made the grid rebuild thousands of item definitions each time it recomposed.
                     items(
-                        items = contacts,
-                        key = { "${it.id}_${it.number}" }
-                    ) { contact ->
-                        ContactBoxCard(
-                            contact = contact,
-                            style = cardStyle,
-                            viewModel = viewModel,
-                            onCall = onCallClick,
-                            onToggleFavorite = onToggleFavorite,
-                            onEditContact = onEditContact,
-                            onDeleteContact = onDeleteContact
-                        )
+                        count = gridItems.size,
+                        key = { index ->
+                            when (val entry = gridItems[index]) {
+                                is ContactGridItem.Header -> "header_${entry.letter}"
+                                is ContactGridItem.Person -> "contact_${entry.contact.id}_${entry.contact.number}"
+                            }
+                        },
+                        span = { index ->
+                            if (gridItems[index] is ContactGridItem.Header) GridItemSpan(maxLineSpan) else GridItemSpan(1)
+                        },
+                        contentType = { index ->
+                            if (gridItems[index] is ContactGridItem.Header) "header" else "contact"
+                        }
+                    ) { index ->
+                        when (val entry = gridItems[index]) {
+                            is ContactGridItem.Header -> LetterSectionHeader(letter = entry.letter)
+                            is ContactGridItem.Person -> Box(modifier = Modifier.animateItem()) {
+                                ContactBoxCard(
+                                    contact = entry.contact,
+                                    style = cardStyle,
+                                    viewModel = viewModel,
+                                    onCall = onCallClick,
+                                    onToggleFavorite = onToggleFavorite,
+                                    onEditContact = onEditContact,
+                                    onDeleteContact = onDeleteContact
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // A-Z Scroller Rail
+        // Modern A–Z scroller rail with floating preview bubble
         if (hasPermission && !isLoading && contacts.isNotEmpty()) {
             val haptic = LocalHapticFeedback.current
-            val maxScrollTarget = contacts.size - 1
+            val maxScrollTarget = (gridItems.size - 1).coerceAtLeast(0)
+
+            var previewLetter by remember { mutableStateOf<Char?>(null) }
+            var isDragging by remember { mutableStateOf(false) }
+
+            LaunchedEffect(previewLetter, isDragging) {
+                if (!isDragging && previewLetter != null) {
+                    delay(700)
+                    previewLetter = null
+                }
+            }
 
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .width(40.dp)
-                    .padding(vertical = 40.dp)
+                    .width(34.dp)
+                    .padding(vertical = 44.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f))
                     .pointerInput(alphabet, letterToIndex, maxScrollTarget) {
                         detectTapGestures { offset ->
-                            val index = (offset.y / size.height * alphabet.size).toInt().coerceIn(0, alphabet.size - 1)
+                            val index = (offset.y / size.height * alphabet.size)
+                                .toInt()
+                                .coerceIn(0, alphabet.size - 1)
                             val char = alphabet[index]
+                            previewLetter = char
+                            isDragging = false
                             letterToIndex[char]?.let { targetIndex ->
-                                val safeIndex = targetIndex.coerceIn(0, maxScrollTarget.coerceAtLeast(0))
+                                val safeIndex = targetIndex.coerceIn(0, maxScrollTarget)
                                 coroutineScope.launch {
                                     gridState.animateScrollToItem(safeIndex)
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -311,11 +328,30 @@ fun ContactsTabContent(
                         }
                     }
                     .pointerInput(alphabet, letterToIndex, maxScrollTarget) {
-                        detectDragGestures { change, _ ->
-                            val index = (change.position.y / size.height * alphabet.size).toInt().coerceIn(0, alphabet.size - 1)
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                isDragging = true
+                                val index = (offset.y / size.height * alphabet.size)
+                                    .toInt()
+                                    .coerceIn(0, alphabet.size - 1)
+                                previewLetter = alphabet[index]
+                            },
+                            onDragEnd = {
+                                isDragging = false
+                                previewLetter = null
+                            },
+                            onDragCancel = {
+                                isDragging = false
+                                previewLetter = null
+                            }
+                        ) { change, _ ->
+                            val index = (change.position.y / size.height * alphabet.size)
+                                .toInt()
+                                .coerceIn(0, alphabet.size - 1)
                             val char = alphabet[index]
+                            previewLetter = char
                             letterToIndex[char]?.let { targetIndex ->
-                                val safeIndex = targetIndex.coerceIn(0, maxScrollTarget.coerceAtLeast(0))
+                                val safeIndex = targetIndex.coerceIn(0, maxScrollTarget)
                                 coroutineScope.launch {
                                     gridState.scrollToItem(safeIndex)
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -328,36 +364,219 @@ fun ContactsTabContent(
             ) {
                 alphabet.forEach { char ->
                     val isActive = char == activeLetter.value
+                    val bgColor by animateColorAsState(
+                        targetValue = if (isActive) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        label = "railBg"
+                    )
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(20.dp)
-                            .background(
-                                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                shape = RoundedCornerShape(16.dp)
-                            )
+                            .clip(CircleShape)
+                            .background(bgColor)
                     ) {
                         Text(
                             text = char.toString(),
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = if (isActive) 11.sp else 9.sp,
+                            fontSize = if (isActive) 10.sp else 8.5.sp,
                             fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                            color = if (isActive) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                            }
                         )
                     }
+                }
+            }
+
+            // Floating letter preview bubble (center of the screen, like modern dialers)
+            previewLetter?.let { letter ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(84.dp)
+                        .shadow(14.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = letter.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
         }
     }
 }
 
+/* ------------------------------------------------------------------------------------------ */
+/*  Small building blocks                                                                      */
+/* ------------------------------------------------------------------------------------------ */
+
+/** Modern rounded letter section header with a fading divider. */
+@Composable
+private fun LetterSectionHeader(letter: Char) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 4.dp, top = 10.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = letter.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.outlineVariant,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+/** Gradient pill "Add contact" action with a soft drop shadow and press-scale. */
+@Composable
+private fun AddContactPill(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "addPillScale"
+    )
+
+    Row(
+        modifier = Modifier
+            .testTag("add_contact_fab")
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(10.dp, CircleShape)
+            .clip(CircleShape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+                    )
+                )
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 18.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = stringResource(R.string.action_add_contact),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+    }
+}
+
+/** Rounded, tonal permission card. */
+@Composable
+private fun PermissionPromptCard(onRequestPermission: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 14.dp),
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.permissions_required),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.contacts_perm_desc),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onRequestPermission,
+                shape = CircleShape,
+                modifier = Modifier.height(42.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.enable_contacts_perm),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/*  Contact card                                                                               */
+/* ------------------------------------------------------------------------------------------ */
+
 /**
  * A single contact "box". Tapping opens the full [ContactProfileSheet] (numbers, message,
  * favourite, edit, share, copy, block, delete); the trailing call button on the Home layout
  * dials the primary number directly.
  *
- * [ContactCardStyle.HOME] lays the avatar left (wide box); [ContactCardStyle.FAVORITES]
- * centres the avatar on top with a gold star so the page looks distinct.
+ * [ContactCardStyle.HOME] lays the avatar left (wide box with a quick-call bubble);
+ * [ContactCardStyle.FAVORITES] centres the avatar on top with a gold star so the page
+ * looks distinct.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -379,94 +598,112 @@ private fun ContactBoxCard(
     val primaryLabel = numbers.firstOrNull()?.label ?: contact.label
 
     val isFavorites = style == ContactCardStyle.FAVORITES
-    val containerColor = when {
-        isAmoled -> Color(0xFF141414)
-        isFavorites -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    }
-    val shape = if (isFavorites) RoundedCornerShape(26.dp) else RoundedCornerShape(18.dp)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = shape,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = if (isAmoled) BorderStroke(1.dp, Color(0xFF1C1C1C)) else null
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.975f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "cardScale"
+    )
+
+    val shape = if (isFavorites) RoundedCornerShape(28.dp) else RoundedCornerShape(24.dp)
+
+    // Solid tonal cards with a hairline border: crisp in Day, Midnight and Night. Favourites get a soft tint of
+    // the accent colour at the top, so they stand out without looking heavy.
+    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val tint = MaterialTheme.colorScheme.primaryContainer
+    val background: Brush = if (isFavorites) {
+        Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(baseColor, tint, 0.55f), baseColor))
+    } else {
+        SolidColor(baseColor)
+    }
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(shape)
+            .background(background)
+            .border(1.dp, borderColor, shape)
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                    showProfile = true
+                },
+                onLongClick = {
+                    RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.HEAVY_CLICK)
+                    showProfile = true
+                }
+            )
+            .padding(
+                start = 14.dp,
+                end = if (isFavorites) 14.dp else 10.dp,
+                top = if (isFavorites) 18.dp else 12.dp,
+                bottom = if (isFavorites) 16.dp else 12.dp
+            )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = {
-                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
-                        showProfile = true
-                    },
-                    onLongClick = {
-                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.HEAVY_CLICK)
-                        showProfile = true
-                    }
+        if (isFavorites) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ContactBoxAvatar(contact = contact, size = 58.dp, showStar = true)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = contact.name.ifBlank { contact.number },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
-                .padding(start = 12.dp, end = if (isFavorites) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp)
-        ) {
-            if (isFavorites) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    ContactBoxAvatar(contact = contact, size = 56.dp, showStar = true)
-                    Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = contact.number,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ContactBoxAvatar(contact = contact, size = 48.dp, showStar = contact.favorite)
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = contact.name.ifBlank { contact.number },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = contact.number,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ContactBoxAvatar(contact = contact, size = 46.dp, showStar = contact.favorite)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = contact.name.ifBlank { contact.number },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = contact.number,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                Spacer(modifier = Modifier.width(8.dp))
+                QuickCallBubble(
+                    onClick = {
+                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                        onCall(contact.copy(number = primaryNumber, label = primaryLabel))
                     }
-                    IconButton(
-                        onClick = {
-                            RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
-                            onCall(contact.copy(number = primaryNumber, label = primaryLabel))
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Call,
-                            contentDescription = stringResource(R.string.action_call),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
+                )
             }
         }
     }
@@ -484,6 +721,46 @@ private fun ContactBoxCard(
     }
 }
 
+/** Circular tonal call shortcut used on the Home contact rows. */
+@Composable
+private fun QuickCallBubble(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "callScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Call,
+            contentDescription = stringResource(R.string.action_call),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(19.dp)
+        )
+    }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/*  Avatar                                                                                     */
+/* ------------------------------------------------------------------------------------------ */
+
 @Composable
 internal fun ContactBoxAvatar(
     contact: Contact,
@@ -491,6 +768,13 @@ internal fun ContactBoxAvatar(
     showStar: Boolean
 ) {
     Box(contentAlignment = Alignment.Center) {
+        // Soft halo ring behind the avatar for a modern, layered look.
+        Box(
+            modifier = Modifier
+                .size(size + 6.dp)
+                .clip(AppShapes.Avatar)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f))
+        )
         Box(
             modifier = Modifier
                 .size(size)
@@ -534,14 +818,19 @@ internal fun ContactBoxAvatar(
                     .align(Alignment.TopEnd)
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        shape = CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = Color(0xFFEAB308),
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }

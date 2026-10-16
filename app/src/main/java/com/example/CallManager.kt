@@ -499,6 +499,10 @@ object CallManager {
         } catch (_: SecurityException) {
             // Not permitted on this device; ignore.
         }
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            audioManager?.ringerMode = android.media.AudioManager.RINGER_MODE_SILENT
+        } catch (_: Exception) {}
     }
 
     fun playDtmf(key: Char) {

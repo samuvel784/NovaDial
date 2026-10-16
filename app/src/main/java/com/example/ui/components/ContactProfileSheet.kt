@@ -9,7 +9,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +24,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -71,6 +76,22 @@ fun ContactProfileSheet(
     val blocked by viewModel.blockedNumbersFlow.collectAsStateWithLifecycle()
     val blockedEntry = remember(blocked, contact) {
         blocked.firstOrNull { ContactRingtonePrefs.numbersMatch(it.number, contact.number) }
+    }
+
+    val ringtonePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.let {
+            androidx.core.content.IntentCompat.getParcelableExtra(it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        }
+        if (uri != null) {
+            val existing = ContactRingtonePrefs.get(context, contact.number)
+            ContactRingtonePrefs.set(context, contact.number, uri.toString(), existing?.pattern ?: ContactRingtonePrefs.PATTERN_DEFAULT)
+            Toast.makeText(context, context.getString(R.string.ringtone_assigned_toast), Toast.LENGTH_SHORT).show()
+        } else {
+            ContactRingtonePrefs.remove(context, contact.number)
+            Toast.makeText(context, context.getString(R.string.ringtone_cleared_toast), Toast.LENGTH_SHORT).show()
+        }
     }
 
     ModalBottomSheet(
@@ -184,13 +205,20 @@ fun ContactProfileSheet(
                     onClick = { onToggleFavorite(contact) }
                 )
                 DetailActionItem(
-                    icon = Icons.Default.Edit,
-                    label = stringResource(R.string.btn_edit),
+                    icon = Icons.Default.MusicNote,
+                    label = "Ringtone",
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     onClick = {
-                        onDismiss()
-                        onEditContact(contact)
+                        val existing = ContactRingtonePrefs.get(context, contact.number)?.ringtoneUri?.let { it.toUri() }
+                        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Ringtone for ${contact.name}")
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existing)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                        }
+                        ringtonePickerLauncher.launch(intent)
                     }
                 )
                 DetailActionItem(
@@ -234,6 +262,16 @@ fun ContactProfileSheet(
                     onClick = {
                         onDismiss()
                         onDeleteContact(contact)
+                    }
+                )
+                DetailActionItem(
+                    icon = Icons.Default.Edit,
+                    label = stringResource(R.string.btn_edit),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    onClick = {
+                        onDismiss()
+                        onEditContact(contact)
                     }
                 )
             }

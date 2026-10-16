@@ -82,14 +82,16 @@ object ContactRingtonePrefs {
             ?.value
     }
 
-    /** Last-8-digit number comparison; exact-equal short numbers also match. */
+    /** Robust number comparison handling country codes and formatting differences. */
     fun numbersMatch(a: String, b: String): Boolean {
         val da = a.filter { it.isDigit() }
         val db = b.filter { it.isDigit() }
         if (da.isEmpty() || db.isEmpty()) return false
         if (da == db) return true
-        if (minOf(da.length, db.length) < 7) return false
-        return da.takeLast(8) == db.takeLast(8)
+        val minLen = minOf(da.length, db.length)
+        if (minLen < 4) return false
+        if (da.endsWith(db) || db.endsWith(da)) return true
+        return minLen >= 7 && (da.takeLast(7) == db.takeLast(7))
     }
 
     fun set(context: Context, number: String, ringtoneUri: String?, pattern: String) {

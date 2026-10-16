@@ -18,29 +18,47 @@
 package com.example.ui.components
 
 import android.content.Context
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Dialpad as DialpadOutlined
+import androidx.compose.material.icons.outlined.History as HistoryOutlined
+import androidx.compose.material.icons.outlined.Home as HomeOutlined
+import androidx.compose.material.icons.outlined.Person as PersonOutlined
+import androidx.compose.material.icons.outlined.StarBorder as StarOutlined
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.R
 import androidx.compose.ui.res.stringResource
@@ -48,6 +66,8 @@ import androidx.compose.ui.res.stringResource
 import com.example.ui.theme.LocalM3Expressive
 import com.example.ui.theme.LocalAmoledMode
 import com.example.ui.theme.AppShapes
+import com.example.ui.theme.NovaMotion
+import com.example.ui.theme.NovaTheme
 
 @Composable
 fun HeaderSearchBar(
@@ -56,30 +76,35 @@ fun HeaderSearchBar(
     menuVisible: Boolean = false,
     onMenuClick: () -> Unit = {}
 ) {
-    val searchShape = AppShapes.Chip
-    val isExpressive = LocalM3Expressive.current
-    val isAmoled = LocalAmoledMode.current
-    val containerColor = if (isAmoled) {
-        Color(0xFF0D0D0D)
-    } else if (isExpressive) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-    } else {
-        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-    }
+    val nova = NovaTheme.colors
+    var focused by remember { mutableStateOf(false) }
+
+    // The bar is white on the porcelain Day page and one tone lighter than the page in the dark themes.
+    val containerColor = if (nova.isDark) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface
+    val borderColor by animateColorAsState(
+        targetValue = if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+        label = "searchBorder"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+        label = "searchIcon"
+    )
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
-        shape = searchShape,
+            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 6.dp),
+        shape = AppShapes.Chip,
         color = containerColor,
-        border = if (isAmoled) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E1E1E)) else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        tonalElevation = if (isAmoled) 0.dp else if (isExpressive) 6.dp else 3.dp
+        border = BorderStroke(if (focused) 1.5.dp else 1.dp, borderColor),
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-                .height(48.dp),
+                .padding(horizontal = 8.dp)
+                .height(52.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (menuVisible) {
@@ -90,20 +115,24 @@ fun HeaderSearchBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                Spacer(modifier = Modifier.width(4.dp))
+            } else {
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search_placeholder),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Box(modifier = Modifier.weight(1.0f)) {
                 if (searchQuery.isEmpty()) {
                     Text(
                         text = stringResource(R.string.search_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 BasicTextField(
@@ -112,8 +141,11 @@ fun HeaderSearchBar(
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focused = it.isFocused }
                 )
             }
             if (searchQuery.isNotEmpty()) {
@@ -124,11 +156,18 @@ fun HeaderSearchBar(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else {
+                Spacer(modifier = Modifier.width(8.dp))
             }
         }
     }
 }
 
+/**
+ * Bottom navigation (Home / Recent / Favourites ...).
+ * A tonal pill slides between the tabs on a spring, the selected icon switches from outline to filled, and the
+ * bar paints its own background under the system gesture area, so it sits flush at the bottom of the screen.
+ */
 @Composable
 fun BottomNavBar(
     selectedTab: Int,
@@ -136,69 +175,127 @@ fun BottomNavBar(
     tabSlots: List<String> = listOf("HOME", "RECENTS", "FAVORITES")
 ) {
     val haptic = LocalHapticFeedback.current
-    val isAmoled = LocalAmoledMode.current
+    val primary = MaterialTheme.colorScheme.primary
+    val unselected = MaterialTheme.colorScheme.onSurfaceVariant
 
-    NavigationBar(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
-        containerColor = if (isAmoled) Color.Black else MaterialTheme.colorScheme.surface,
-        tonalElevation = if (isAmoled) 0.dp else 3.dp
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
-        val items = tabSlots.mapIndexed { index, slotKey ->
-            val (labelRes, icon) = when (slotKey) {
-                "HOME" -> R.string.tab_home to Icons.Default.Home
-                "FAVORITES" -> R.string.tab_favorites to Icons.Default.Star
-                "CONTACTS" -> R.string.tab_contacts to Icons.Default.Person
-                "DIALPAD" -> R.string.tab_dialpad to Icons.Default.Dialpad
-                else -> R.string.tab_recents to Icons.Default.History
-            }
-            Triple(index, stringResource(labelRes), icon)
-        }
-
-        items.forEach { (index, label, icon) ->
-            val isSelected = selectedTab == index
-            val animatedScale by animateFloatAsState(
-                targetValue = if (isSelected) 1.18f else 1.0f,
-                animationSpec = spring(
-                    stiffness = Spring.StiffnessMediumLow,
-                    dampingRatio = Spring.DampingRatioMediumBouncy
-                ),
-                label = "nav_icon_scale"
+        Column {
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
             )
-
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = {
-                    if (!isSelected) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onTabSelected(index)
-                    }
-                },
-                icon = {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .scale(animatedScale)
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.navigationBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
                     )
-                },
-                label = {
-                    Text(
-                        text = label,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    .height(70.dp)
+            ) {
+                val slotCount = tabSlots.size.coerceAtLeast(1)
+                val itemWidth = maxWidth / slotCount
+                val pillWidth = 64.dp
+                val indicatorX = animateDpAsState(
+                    targetValue = itemWidth * selectedTab.coerceIn(0, slotCount - 1),
+                    animationSpec = NovaMotion.snappy(),
+                    label = "navIndicator"
                 )
-            )
+
+                // sliding pill behind the selected icon (offset is read while drawing, so no recomposition per frame)
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                x = (indicatorX.value + (itemWidth - pillWidth) / 2).roundToPx(),
+                                y = 9.dp.roundToPx()
+                            )
+                        }
+                        .size(width = pillWidth, height = 32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                )
+
+                Row(modifier = Modifier.fillMaxSize()) {
+                    tabSlots.forEachIndexed { index, slotKey ->
+                        val selected = selectedTab == index
+                        val label = stringResource(
+                            when (slotKey) {
+                                "HOME" -> R.string.tab_home
+                                "FAVORITES" -> R.string.tab_favorites
+                                "CONTACTS" -> R.string.tab_contacts
+                                "DIALPAD" -> R.string.tab_dialpad
+                                else -> R.string.tab_recents
+                            }
+                        )
+                        val icon: ImageVector = when (slotKey) {
+                            "HOME" -> if (selected) Icons.Default.Home else Icons.Outlined.HomeOutlined
+                            "FAVORITES" -> if (selected) Icons.Default.Star else Icons.Outlined.StarOutlined
+                            "CONTACTS" -> if (selected) Icons.Default.Person else Icons.Outlined.PersonOutlined
+                            "DIALPAD" -> if (selected) Icons.Default.Dialpad else Icons.Outlined.DialpadOutlined
+                            else -> if (selected) Icons.Default.History else Icons.Outlined.HistoryOutlined
+                        }
+                        val tint by animateColorAsState(
+                            targetValue = if (selected) primary else unselected,
+                            animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+                            label = "navTint"
+                        )
+                        val iconScale = animateFloatAsState(
+                            targetValue = if (selected) 1.08f else 1f,
+                            animationSpec = NovaMotion.snappy(),
+                            label = "navIconScale"
+                        )
+                        val source = remember { MutableInteractionSource() }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .selectable(
+                                    selected = selected,
+                                    interactionSource = source,
+                                    indication = null,
+                                    role = Role.Tab,
+                                    onClick = {
+                                        if (!selected) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onTabSelected(index)
+                                        }
+                                    }
+                                ),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Spacer(modifier = Modifier.height(9.dp))
+                            Box(modifier = Modifier.height(32.dp), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = tint,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .graphicsLayer {
+                                            val s = iconScale.value
+                                            scaleX = s
+                                            scaleY = s
+                                        }
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = label,
+                                color = tint,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -206,15 +303,53 @@ fun BottomNavBar(
 @Composable
 fun EmptyStateIllustration(
     title: String,
-    subtitle: String
+    subtitle: String,
+    icon: ImageVector = Icons.Default.Person
 ) {
+    val nova = NovaTheme.colors
+    // gentle fade-and-rise when the empty state appears
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val progress = animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = NovaMotion.smooth(),
+        label = "emptyProgress"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 96.dp, bottom = 32.dp, start = 32.dp, end = 32.dp),
+            .padding(top = 72.dp, bottom = 32.dp, start = 32.dp, end = 32.dp)
+            .graphicsLayer {
+                alpha = progress.value
+                translationY = (1f - progress.value) * 24.dp.toPx()
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(nova.canvasTint),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(nova.brand),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
@@ -270,7 +405,7 @@ fun ExpandableSettingsCard(
     icon: ImageVector,
     iconBgColor: Color = MaterialTheme.colorScheme.primaryContainer,
     iconTint: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-    cardBgColor: Color = MaterialTheme.colorScheme.surface,
+    cardBgColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
     initiallyExpanded: Boolean = false,
     badgeText: String? = null,
     hasSwitch: Boolean = false,
@@ -299,6 +434,7 @@ fun ExpandableSettingsCard(
                 )
             ),
         colors = CardDefaults.cardColors(containerColor = cardBgColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         shape = AppShapes.Card
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {

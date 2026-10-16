@@ -32,13 +32,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.R
+import com.example.model.getAvatarShape
+import com.example.model.getInitials
 import com.example.telecom.EmergencySosManager
 import com.example.telecom.EmergencySosPrefs
 import com.example.telecom.EmergencySosService
@@ -78,8 +87,8 @@ fun EmergencySosSettings(
     var countdownJob by remember { mutableStateOf<Job?>(null) }
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var draftName by remember { mutableStateOf("") }
-    var draftNumber by remember { mutableStateOf("") }
+    var contactSearchInput by remember { mutableStateOf("") }
+    val allContacts by viewModel.allContactsFlow.collectAsStateWithLifecycle()
 
     var hasSms by remember { mutableStateOf(EmergencySosManager.canSendSms(context)) }
     var hasLocation by remember { mutableStateOf(LocationHelper.hasLocationPermission(context)) }
@@ -177,11 +186,15 @@ fun EmergencySosSettings(
         }
     }
 
+    val scrollState = androidx.compose.runtime.saveable.rememberSaveable(saver = androidx.compose.foundation.ScrollState.Saver) {
+        androidx.compose.foundation.ScrollState(0)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -668,34 +681,114 @@ fun EmergencySosSettings(
             onDismissRequest = { showAddDialog = false },
             title = { Text(stringResource(R.string.sos_contact_add)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = draftName,
-                        onValueChange = { draftName = it.take(60) },
-                        label = { Text(stringResource(R.string.sos_contact_name)) },
-                        singleLine = true
+                        value = contactSearchInput,
+                        onValueChange = { contactSearchInput = it },
+                        label = { Text(stringResource(R.string.add_call_search_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                    OutlinedTextField(
-                        value = draftNumber,
-                        onValueChange = { draftNumber = it.take(20) },
-                        label = { Text(stringResource(R.string.sos_contact_number)) },
-                        singleLine = true
-                    )
+
+                    val filteredContacts = remember(contactSearchInput, allContacts) {
+                        val query = contactSearchInput.trim()
+                        if (query.isBlank()) {
+                            allContacts
+                        } else {
+                            allContacts.filter { contact ->
+                                contact.name.contains(query, ignoreCase = true) ||
+                                contact.number.contains(query) ||
+                                contact.getAllNumbers().any { it.number.contains(query) }
+                            }
+                        }
+                    }
+
+                    if (filteredContacts.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.sos_contacts_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(
+                                items = filteredContacts,
+                                key = { "${it.id}_${it.number}" }
+                            ) { contact ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        RichHapticEngine.performHaptic(context, RichHapticEngine.HapticStyle.KEY_TICK)
+                                        if (contact.number.isNotBlank()) {
+                                            EmergencySosPrefs.addContact(context, contact.name, contact.number)
+                                            contacts = EmergencySosPrefs.getContacts(context)
+                                            contactSearchInput = ""
+                                            showAddDialog = false
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier.size(36.dp),
+                                            shape = getAvatarShape("circular"),
+                                            color = contact.avatarBg
+                                        ) {
+                                            var imageFailed by remember(contact.photoUri) { mutableStateOf(false) }
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (contact.photoUri.isNotEmpty() && !imageFailed) {
+                                                    AsyncImage(
+                                                        model = ImageRequest.Builder(context)
+                                                            .data(contact.photoUri)
+                                                            .size(128, 128)
+                                                            .crossfade(true)
+                                                            .build(),
+                                                        contentDescription = contact.name,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop,
+                                                        onError = { imageFailed = true }
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = contact.avatarText.ifEmpty { getInitials(contact.name) },
+                                                        color = contact.avatarTextColor,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = contact.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = contact.number,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (draftNumber.isNotBlank()) {
-                            EmergencySosPrefs.addContact(context, draftName, draftNumber)
-                            contacts = EmergencySosPrefs.getContacts(context)
-                        }
-                        draftName = ""
-                        draftNumber = ""
-                        showAddDialog = false
-                    }
-                ) { Text(stringResource(R.string.btn_save)) }
-            },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
                     Text(stringResource(R.string.btn_cancel))

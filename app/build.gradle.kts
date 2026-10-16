@@ -13,8 +13,8 @@ android {
     applicationId = "com.aistudio.novadial.kpxm"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "2.0.0"
+    versionCode = 4
+    versionName = "2.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -109,17 +109,16 @@ configurations.all {
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
-  implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
-  implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  // installs the baseline profile (app/src/main/baseline-prof.txt) so the app starts and scrolls faster from the first launch
+  implementation(libs.androidx.profileinstaller)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.paging.runtime)
   implementation(libs.androidx.paging.compose)
   implementation(libs.androidx.room.ktx)

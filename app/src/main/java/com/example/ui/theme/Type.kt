@@ -19,215 +19,64 @@ package com.example.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.R
 
-/*
- * NovaDial "Aurora" typography.
- *
- * A modern, high-contrast type scale: generous display sizes with tight
- * negative tracking, confident semibold titles and airy body copy.
- * Tabular numbers ("tnum") keep live call timers from jittering.
+/**
+ * Inter, bundled with the app (SIL Open Font License, see assets/licenses/Inter-OFL.txt).
+ * Only Latin, Greek and Cyrillic glyphs are included, other scripts (Hindi, Chinese, Japanese, Arabic...)
+ * fall back to the system font automatically.
  */
+val NovaFontFamily = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold)
+)
 
+// Tabular digits: every digit has the same width, so numbers in the dialpad and call timer never jiggle.
 private const val TABULAR_DIGITS = "tnum"
 
-// Calm, neutral scale (used when the expressive M3 switch is off).
-val Typography = Typography(
-    displayLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 56.sp,
-        lineHeight = 62.sp,
-        letterSpacing = (-1.0).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    displayMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 44.sp,
-        lineHeight = 50.sp,
-        letterSpacing = (-0.5).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    displaySmall = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 36.sp,
-        lineHeight = 42.sp,
-        letterSpacing = (-0.25).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
-        letterSpacing = (-0.25).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 27.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineSmall = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 23.sp,
-        lineHeight = 30.sp,
-        letterSpacing = 0.sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    titleLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 21.sp,
-        lineHeight = 27.sp,
-        letterSpacing = 0.sp
-    ),
-    titleMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 23.sp,
-        letterSpacing = 0.1.sp
-    ),
-    titleSmall = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    bodyLarge = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
-    ),
-    bodyMedium = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.2.sp
-    ),
-    bodySmall = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
-        letterSpacing = 0.3.sp
-    ),
-    labelLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    labelMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
-    ),
-    labelSmall = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
+private fun style(
+    size: Int,
+    line: Int,
+    weight: FontWeight,
+    tracking: Float,
+    tabular: Boolean = false
+): TextStyle = TextStyle(
+    fontFamily = NovaFontFamily,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    letterSpacing = tracking.sp,
+    fontFeatureSettings = if (tabular) TABULAR_DIGITS else null
 )
 
-// Expressive Aurora scale (default): bolder, rounder, more spacious.
-val ExpressiveTypography = Typography(
-    displayLarge = TextStyle(
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 58.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-1.5).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    displayMedium = TextStyle(
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 46.sp,
-        lineHeight = 52.sp,
-        letterSpacing = (-1.0).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    displaySmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 38.sp,
-        lineHeight = 44.sp,
-        letterSpacing = (-0.5).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 33.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.4).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 35.sp,
-        letterSpacing = (-0.25).sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    headlineSmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 31.sp,
-        letterSpacing = 0.sp,
-        fontFeatureSettings = TABULAR_DIGITS
-    ),
-    titleLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-0.2).sp
-    ),
-    titleMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.1.sp
-    ),
-    titleSmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    bodyLarge = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
-    ),
-    bodyMedium = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.2.sp
-    ),
-    bodySmall = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
-        letterSpacing = 0.3.sp
-    ),
-    labelLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.2.sp
-    ),
-    labelMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelSmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.6.sp
+private fun novaTypography(expressive: Boolean): Typography {
+    // The expressive variant uses a slightly heavier weight for titles and labels.
+    val title = if (expressive) FontWeight.Bold else FontWeight.SemiBold
+    val label = if (expressive) FontWeight.Bold else FontWeight.SemiBold
+    return Typography(
+        displayLarge = style(57, 64, FontWeight.SemiBold, -1.6f, tabular = true),
+        displayMedium = style(45, 52, FontWeight.SemiBold, -1.0f, tabular = true),
+        displaySmall = style(36, 44, FontWeight.SemiBold, -0.6f, tabular = true),
+        headlineLarge = style(32, 40, FontWeight.SemiBold, -0.5f, tabular = true),
+        headlineMedium = style(28, 36, FontWeight.SemiBold, -0.3f, tabular = true),
+        headlineSmall = style(24, 32, FontWeight.SemiBold, -0.2f, tabular = true),
+        titleLarge = style(22, 28, title, -0.2f, tabular = true),
+        titleMedium = style(16, 24, title, 0.0f),
+        titleSmall = style(14, 20, title, 0.05f),
+        bodyLarge = style(16, 24, FontWeight.Normal, 0.0f),
+        bodyMedium = style(14, 20, FontWeight.Normal, 0.05f),
+        bodySmall = style(12, 16, FontWeight.Normal, 0.15f),
+        labelLarge = style(14, 20, label, 0.05f),
+        labelMedium = style(12, 16, label, 0.25f),
+        labelSmall = style(11, 16, label, 0.35f)
     )
-)
+}
+
+val Typography: Typography = novaTypography(expressive = false)
+val ExpressiveTypography: Typography = novaTypography(expressive = true)

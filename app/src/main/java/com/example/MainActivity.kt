@@ -17,6 +17,12 @@
 
 package com.example
 
+import com.example.ui.theme.novaCanvas
+import com.example.ui.theme.NovaTheme
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
@@ -25,6 +31,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.telecom.Call
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -32,6 +39,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.safeState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -76,7 +85,8 @@ class MainActivity : ComponentActivity() {
             window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         }
 
-        // FIXED: Do not restore authentication across process recreation if biometric lock is enabled
+        enableEdgeToEdge()
+
         if (savedInstanceState != null && !viewModel.isBiometricLockEnabled.value) {
             isAppAuthenticated.value = savedInstanceState.getBoolean("is_authenticated", false)
         } else {
@@ -87,8 +97,9 @@ class MainActivity : ComponentActivity() {
 
         val hasRealCall = CallManager.currentCall.value != null ||
                 CallManager.calls.value.isNotEmpty() ||
-                viewModel.isFakeCallActive.value
-        if (hasTrustedToken() || (hasRealCall && isAppAuthenticated.value)) {
+                viewModel.isFakeCallActive.value ||
+                CallManager.calls.value.any { it.safeState == Call.STATE_RINGING }
+        if (hasTrustedToken() || hasRealCall) {
             setLockScreenVisibility(true)
         }
 
@@ -101,6 +112,18 @@ class MainActivity : ComponentActivity() {
             var showRestrictedSettingsDialog by remember { mutableStateOf(false) }
             val themeMode by viewModel.themeMode
             val isCallActive by viewModel.isCallActive
+
+            val allCalls by CallManager.calls.collectAsStateWithLifecycle()
+            val currentCall by CallManager.currentCall.collectAsStateWithLifecycle()
+            LaunchedEffect(allCalls, currentCall, viewModel.isFakeCallActive.value) {
+                val hasCall = currentCall != null ||
+                        allCalls.isNotEmpty() ||
+                        viewModel.isFakeCallActive.value ||
+                        allCalls.any { it.safeState == Call.STATE_RINGING }
+                if (hasCall) {
+                    setLockScreenVisibility(true)
+                }
+            }
 
             // FIXED: Prevent lock screen back-gesture from revealing private contacts or recents
             val keyguardManager = remember { context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager }
@@ -115,8 +138,10 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(isCallActive) {
                 try {
                     setLockScreenVisibility(isCallActive)
-                    if (!isCallActive && isLaunchedForCall && CallManager.calls.value.isEmpty() && !viewModel.isFakeCallActive.value) {
-                        dismissCallUiAndExit()
+                    if (!isCallActive) {
+                        isLaunchedForCall = false
+                        viewModel.isLaunchedForCall.value = false
+                        viewModel.isCallMinimized.value = false
                     }
                 } catch (_: Exception) {}
             }
@@ -179,7 +204,7 @@ class MainActivity : ComponentActivity() {
                 isAmoledMode = isAmoledMode,
                 isM3Expressive = isM3Expressive
             ) {
-                if (isAppAuthenticated.value) {
+                if (isAppAuthenticated.value || isCallActive) {
                     MainScreen(
                         viewModel = viewModel,
                         onShowRestrictedSettings = { showRestrictedSettingsDialog = true },
@@ -187,8 +212,8 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                     Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+                        modifier = Modifier.fillMaxSize().novaCanvas(),
+                        color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(
@@ -196,20 +221,26 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.Center,
                                 modifier = Modifier.padding(32.dp)
                             ) {
-                                Surface(
-                                    shape = AppShapes.Avatar,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    tonalElevation = 4.dp,
-                                    modifier = Modifier.size(96.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "App Locked",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(48.dp)
+                                // gradient badge with a soft glow
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(104.dp)
+                                        .shadow(
+                                            elevation = 22.dp,
+                                            shape = AppShapes.Avatar,
+                                            ambientColor = NovaTheme.colors.glow,
+                                            spotColor = NovaTheme.colors.glow
                                         )
-                                    }
+                                        .clip(AppShapes.Avatar)
+                                        .background(NovaTheme.colors.brand)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "App Locked",
+                                        tint = androidx.compose.ui.graphics.Color.White,
+                                        modifier = Modifier.size(48.dp)
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.size(24.dp))
@@ -234,7 +265,8 @@ class MainActivity : ComponentActivity() {
 
                                 Button(
                                     onClick = { triggerDeviceAuthentication() },
-                                    modifier = Modifier.fillMaxWidth(0.7f)
+                                    modifier = Modifier.fillMaxWidth(0.7f).height(52.dp),
+                                    shape = AppShapes.Keypad
                                 ) {
                                     Text(text = "Unlock Dialer", style = MaterialTheme.typography.titleMedium)
                                 }
@@ -336,15 +368,9 @@ class MainActivity : ComponentActivity() {
 
     private fun dismissCallUiAndExit() {
         setLockScreenVisibility(false)
-        if (isLaunchedForCall) {
-            isLaunchedForCall = false
-            viewModel.isLaunchedForCall.value = false
-            if (viewModel.isBiometricLockEnabled.value) {
-                isAppAuthenticated.value = false
-            }
-            // minSdk 24 > LOLLIPOP (21); the legacy finish() fallback was dead code.
-            finishAndRemoveTask()
-        }
+        isLaunchedForCall = false
+        viewModel.isLaunchedForCall.value = false
+        viewModel.isCallMinimized.value = false
     }
 
     private fun setLockScreenVisibility(show: Boolean) {
@@ -358,6 +384,7 @@ class MainActivity : ComponentActivity() {
                 window.addFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 )
                 val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
@@ -368,6 +395,7 @@ class MainActivity : ComponentActivity() {
                 window.clearFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 )
             }

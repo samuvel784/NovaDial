@@ -5,6 +5,7 @@
 
 package com.example
 
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -420,9 +421,11 @@ class MyInCallService : InCallService() {
                     if (!isCallSilenced(call)) {
                         FlashLightManager.startFlashing(this)
                     }
+                    acquireWakeLock()
                     startRinging(call)
                     showIncomingCallNotification(call, isCallWaiting = false)
                     launchCallScreen(answerOnLaunch = false)
+
                     announcer?.announceIncomingCall(
                         call.details?.handle?.schemeSpecificPart ?: "",
                         resolveCallerDisplayName(call, call.details?.handle?.schemeSpecificPart ?: "")

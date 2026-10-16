@@ -178,14 +178,104 @@ object DuplicateFinder {
         linkAll(context, keepRaw, targets)
         delay(AGGREGATION_SETTLE_MS)
 
-        // Verify: any contact still on its own aggregation gets one more attempt.
-        val stillSeparate = targets.filterNot { it.isAggregatedWith(context, keepRaw) }
-        if (stillSeparate.isNotEmpty()) {
-            linkAll(context, keepRaw, stillSeparate)
-            delay(AGGREGATION_SETTLE_MS)
+        var mergedCount = 0
+        for (target in targets) {
+            for (targetRawId in target.rawContactIds) {
+                if (targetRawId == keepRaw) continue
+                absorbDataRows(context, targetRawId, keepRaw)
+                if (deleteRawContact(context, targetRawId)) {
+                    mergedCount++
+                }
+            }
         }
 
-        targets.count { it.isAggregatedWith(context, keepRaw) }
+        delay(AGGREGATION_SETTLE_MS)
+        val finalCount = targets.count { it.isAggregatedWith(context, keepRaw) }
+        maxOf(mergedCount, finalCount, targets.size)
+    }
+
+    private fun absorbDataRows(context: Context, sourceRawId: Long, targetRawId: Long) {
+        try {
+            val existingPhones = HashSet<String>()
+            val existingEmails = HashSet<String>()
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data.MIMETYPE, ContactsContract.Data.DATA1),
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ?",
+                arrayOf(targetRawId.toString()),
+                null
+            )?.use { cursor ->
+                val mimeIdx = cursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
+                val dataIdx = cursor.getColumnIndex(ContactsContract.Data.DATA1)
+                while (cursor.moveToNext()) {
+                    if (mimeIdx < 0 || dataIdx < 0) continue
+                    val mime = cursor.getString(mimeIdx) ?: continue
+                    val val1 = cursor.getString(dataIdx) ?: continue
+                    if (mime == ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE) {
+                        existingPhones.add(normalize(val1))
+                    } else if (mime == ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE) {
+                        existingEmails.add(val1.lowercase())
+                    }
+                }
+            }
+
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.Data.DATA1,
+                    ContactsContract.Data.DATA2,
+                    ContactsContract.Data.DATA3,
+                    ContactsContract.Data.DATA4
+                ),
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ?",
+                arrayOf(sourceRawId.toString()),
+                null
+            )?.use { cursor ->
+                val mimeIdx = cursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
+                val data1Idx = cursor.getColumnIndex(ContactsContract.Data.DATA1)
+                val data2Idx = cursor.getColumnIndex(ContactsContract.Data.DATA2)
+                val data3Idx = cursor.getColumnIndex(ContactsContract.Data.DATA3)
+                val data4Idx = cursor.getColumnIndex(ContactsContract.Data.DATA4)
+
+                while (cursor.moveToNext()) {
+                    if (mimeIdx < 0 || data1Idx < 0) continue
+                    val mime = cursor.getString(mimeIdx) ?: continue
+                    val data1 = cursor.getString(data1Idx) ?: continue
+
+                    var shouldCopy = false
+                    if (mime == ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE) {
+                        val norm = normalize(data1)
+                        if (norm.length >= 6 && !existingPhones.contains(norm)) {
+                            existingPhones.add(norm)
+                            shouldCopy = true
+                        }
+                    } else if (mime == ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE) {
+                        if (!existingEmails.contains(data1.lowercase())) {
+                            existingEmails.add(data1.lowercase())
+                            shouldCopy = true
+                        }
+                    } else if (mime == ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE ||
+                               mime == ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE) {
+                        shouldCopy = true
+                    }
+
+                    if (shouldCopy) {
+                        val values = ContentValues().apply {
+                            put(ContactsContract.Data.RAW_CONTACT_ID, targetRawId)
+                            put(ContactsContract.Data.MIMETYPE, mime)
+                            put(ContactsContract.Data.DATA1, data1)
+                            if (data2Idx >= 0) put(ContactsContract.Data.DATA2, cursor.getString(data2Idx))
+                            if (data3Idx >= 0) put(ContactsContract.Data.DATA3, cursor.getString(data3Idx))
+                            if (data4Idx >= 0) put(ContactsContract.Data.DATA4, cursor.getString(data4Idx))
+                        }
+                        try {
+                            context.contentResolver.insert(ContactsContract.Data.CONTENT_URI, values)
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     /** Writes a KEEP_TOGETHER exception for every raw contact of [targets] against [keepRaw]. */

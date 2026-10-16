@@ -18,6 +18,7 @@
 package com.example.ui.components
 
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
@@ -117,7 +118,15 @@ fun ContactRingtonesSettings(
         }
         if (a.ringtoneUri.isNotBlank()) {
             try {
-                previewRingtone.value = RingtoneManager.getRingtone(context, a.ringtoneUri.toUri())?.apply { play() }
+                previewRingtone.value = RingtoneManager.getRingtone(context, a.ringtoneUri.toUri())?.apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        audioAttributes = AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    }
+                    play()
+                }
             } catch (_: Exception) {}
         }
     }
@@ -192,7 +201,7 @@ fun ContactRingtonesSettings(
             }
         } else {
             items(contacts, key = { it.number }) { contact ->
-                val assignment = mappings[contact.number.trim()]
+                val assignment = remember(mappings, contact.number) { ContactRingtonePrefs.find(context, contact.number) }
                 val ringtoneTitle: String? = remember(assignment) {
                     if (assignment == null || assignment.ringtoneUri.isBlank()) null
                     else runCatching { RingtoneManager.getRingtone(context, assignment.ringtoneUri.toUri())?.getTitle(context) }

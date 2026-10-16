@@ -17,6 +17,10 @@
 
 package com.example.ui.components
 
+import com.example.ui.theme.NovaMotion
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -57,41 +61,31 @@ fun InCallButton(
     val isExpressive = LocalM3Expressive.current
     val isAmoled = LocalAmoledMode.current
 
-    val btnColor = if (isActive) {
-        if (isPulsingRecording) {
-            Color(0xFFB71C1C).copy(alpha = 0.22f)
-        } else {
-            MaterialTheme.colorScheme.primaryContainer
-        }
-    } else {
-        if (isAmoled) {
-            Color(0xFF141414)
-        } else if (isExpressive) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-        } else {
-            MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-        }
+    // Off: soft tonal tile. On: solid accent colour with its contrasting icon, so the state is obvious at a glance.
+    val targetColor = when {
+        isActive && isPulsingRecording -> Color(0xFFB71C1C).copy(alpha = 0.22f)
+        isActive -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
-
-    val contentColor = if (isActive) {
-        if (isPulsingRecording) {
-            Color(0xFFE53935)
-        } else {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        }
-    } else {
-        if (isAmoled) {
-            Color(0xFFE0E0E0)
-        } else if (isExpressive) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
+    val targetContent = when {
+        isActive && isPulsingRecording -> Color(0xFFE53935)
+        isActive -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onSurface
     }
+    val btnColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+        label = "incall_button_color"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = targetContent,
+        animationSpec = NovaMotion.fade(NovaMotion.QUICK),
+        label = "incall_button_content"
+    )
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
+    val scale = animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
         animationSpec = spring(
             stiffness = Spring.StiffnessHigh,
@@ -106,10 +100,15 @@ fun InCallButton(
             onClick()
         },
         interactionSource = interactionSource,
-        modifier = modifier.scale(scale),
+        modifier = modifier.graphicsLayer {
+            val sc = scale.value
+            scaleX = sc
+            scaleY = sc
+        },
         shape = shape,
         color = btnColor,
         contentColor = contentColor,
+        border = if (isActive) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {

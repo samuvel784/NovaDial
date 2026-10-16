@@ -17,6 +17,8 @@
 
 package com.example.ui.components
 
+import com.example.util.MultiSimManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -290,25 +292,35 @@ fun RecentsTabContent(
                                 )
                             }
                         } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(vertical = 2.dp)
-                            ) {
-                                items(
-                                    items = consolidatedRecords,
-                                    key = { it.primary.id },
-                                    contentType = { "recent_call_group" }
-                                ) { group ->
-                                    RecentCallRow(
-                                        group = group,
-                                        onCallClick = { onCallClick(group.primary) },
-                                        onDeleteRecord = { id -> onDeleteRecord(id) },
-                                        getHistory = { viewModel.getCallHistoryByNumber(it) },
-                                        viewModel = viewModel,
-                                        onHistoryClick = { selectedHistoryNumber = it }
-                                    )
+                            // One shared index for every row (recordings, spam numbers, SIM count)
+                            val allRecordings by viewModel.recordingsFlow.collectAsStateWithLifecycle()
+                            val spamNumbers by viewModel.spamFlow.collectAsStateWithLifecycle()
+                            val recentsLookup = remember(allRecordings, spamNumbers, context) {
+                                RecentsLookup(allRecordings, spamNumbers, MultiSimManager.getPhysicalSimCount(context))
+                            }
+                            CompositionLocalProvider(LocalRecentsLookup provides recentsLookup) {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    // room under the floating keypad button, so the last call can be scrolled clear of it
+                                    contentPadding = PaddingValues(bottom = 104.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(vertical = 2.dp)
+                                ) {
+                                    items(
+                                        items = consolidatedRecords,
+                                        key = { it.primary.id },
+                                        contentType = { "recent_call_group" }
+                                    ) { group ->
+                                        RecentCallRow(
+                                            group = group,
+                                            onCallClick = { onCallClick(group.primary) },
+                                            onDeleteRecord = { id -> onDeleteRecord(id) },
+                                            getHistory = { viewModel.getCallHistoryByNumber(it) },
+                                            viewModel = viewModel,
+                                            onHistoryClick = { selectedHistoryNumber = it }
+                                        )
+                                    }
                                 }
                             }
                         }

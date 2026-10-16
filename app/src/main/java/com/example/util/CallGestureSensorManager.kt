@@ -49,7 +49,6 @@ class CallGestureSensorManager(
     private var wasFaceUp = false
     private var faceDownStartTime = 0L
     private var hasFlippedThisCall = false
-    private var isFlipEnabled = false
 
     fun startListening() {
         if (isListening || sensorManager == null) return
@@ -57,18 +56,11 @@ class CallGestureSensorManager(
         faceDownStartTime = 0L
         hasFlippedThisCall = false
 
-        // PERF FIX: Read preference once at start instead of 60 times a second inside onSensorChanged
-        isFlipEnabled = prefs.getBoolean("flip_to_silence_enabled", false)
-
         proximitySensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
-
-        // Only register power-hungry accelerometer if gesture features are enabled
-        if (isFlipEnabled) {
-            accelerometer?.let {
-                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-            }
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
         }
         isListening = true
     }
@@ -91,6 +83,7 @@ class CallGestureSensorManager(
                 onProximityChanged(isNear)
             }
             Sensor.TYPE_ACCELEROMETER -> {
+                val isFlipEnabled = prefs.getBoolean("flip_to_silence_enabled", false)
                 val x = event.values.getOrNull(0) ?: 0f
                 val y = event.values.getOrNull(1) ?: 0f
                 val z = event.values.getOrNull(2) ?: 0f

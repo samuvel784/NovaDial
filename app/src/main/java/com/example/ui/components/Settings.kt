@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.R
 import com.example.ui.theme.AppShapes
 import com.example.ui.theme.LocalAmoledMode
@@ -58,10 +59,10 @@ fun SettingsPanel(
     onClose: () -> Unit,
     initialTab: Int = 0
 ) {
-    var activeTab by remember { mutableIntStateOf(initialTab) }
-    var highlightedTitle by remember { mutableStateOf<String?>(null) }
-    var showAboutDialog by remember { mutableStateOf(false) }
-    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var activeTab by rememberSaveable { mutableIntStateOf(initialTab) }
+    var highlightedTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
+    var showPrivacyDialog by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(enabled = true) {
         if (activeTab != 0) {
@@ -73,13 +74,8 @@ fun SettingsPanel(
 
     val isExpressive = LocalM3Expressive.current
     val isAmoled = LocalAmoledMode.current
-    val cardBgColor = if (isAmoled) {
-        Color(0xFF000000)
-    } else if (isExpressive) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-    } else {
-        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-    }
+    // One tone above the page in every theme. All settings screens receive this colour, so this one line restyles them.
+    val cardBgColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -245,13 +241,10 @@ fun HighlightableCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val isAmoled = LocalAmoledMode.current
     val cardBorder = if (isHighlighted) {
         BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-    } else if (isAmoled) {
-        BorderStroke(1.dp, Color(0xFF1E1E1E))
     } else {
-        null
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 
     if (onClick != null) {

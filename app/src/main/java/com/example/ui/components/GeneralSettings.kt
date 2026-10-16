@@ -225,7 +225,10 @@ fun GeneralSettings(
         }
     }
 
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)

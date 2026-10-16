@@ -665,7 +665,7 @@
     <string name="sos_sent_toast">SOS alert sent to %1$d contact(s)</string>
     <string name="sos_no_contacts_toast">Add at least one emergency contact first</string>
     <string name="sos_test_alert">Send test alert</string>
-    <string name="sos_alert_message">EMERGENCY - I need help. This is an automatic SOS alert from NovaDial.</string>
+    <string name="sos_alert_message">EMERGENCY - I need help. This is an automatic SOS alert from NovaDial app.</string>
     <string name="sos_alert_location_label">My location:</string>
     <string name="sos_no_location">Location unavailable - enable GPS for a map link</string>
     <string name="sos_custom_message_title">Custom alert message</string>
